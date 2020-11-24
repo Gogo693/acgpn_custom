@@ -182,7 +182,8 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
 
         ############## Display results and errors ##########
 
-        
+        print('Couple is: ' + str(data['name']) + ' - ' + str(data['name_c']))
+
         ### display output images
         a = generate_label_color(generate_label_plain(input_label)).float().cuda()
         b = real_image.float().cuda()

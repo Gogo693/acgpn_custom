@@ -179,6 +179,7 @@ class AlignedDataset(BaseDataset):
         C_path = self.C_paths[test]
         C = Image.open(C_path).convert('RGB')
         C_tensor = transform_B(C)
+        name_c = C_path.split('/')[-1]
 
         ##Edge
         E_path = self.E_paths[test]
@@ -260,12 +261,13 @@ class AlignedDataset(BaseDataset):
                            'image_ref': BR_tensor,
                            'path': A_path,
                            'path_ref': AR_path,
-                            'edge': E_tensor,
+                           'edge': E_tensor,
                            'color': C_tensor,
                            'mask': M_tensor,
                            'colormask': MC_tensor,
                            'pose':P_tensor,
                            'name':name,
+                           'name_c': name_c,
                            'mesh': S_tensor,
                            'cloth_lm': CLM_tensor,
                            'cloth_representation': cloth_rep
