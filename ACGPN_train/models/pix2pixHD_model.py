@@ -118,10 +118,13 @@ class Pix2PixHDModel(BaseModel):
         if self.opt.mesh_g:
             mesh_g_dim = 1
 
+        if self.opt.denseplus:
+            dense_dim = 3
+
     
         self.Unet=networks.define_UnetMask(self.opt, 4,self.gpu_ids)
         ## self.Unet = networks.define_UnetMask(4, self.gpu_ids)
-        self.G1 = networks.define_Refine(37 + mesh_dim,14,self.gpu_ids)
+        self.G1 = networks.define_Refine(37 + mesh_dim + dense_dim,14,self.gpu_ids)
         #self.G1 = networks.define_Refine(37, 14, self.gpu_ids)
         self.G2 = networks.define_Refine(19+18,1,self.gpu_ids)
         self.G = networks.define_Refine(24 + mesh_g_dim,3,self.gpu_ids)
@@ -135,7 +138,7 @@ class Pix2PixHDModel(BaseModel):
             use_sigmoid = opt.no_lsgan
             netD_input_nc = input_nc + opt.output_nc
             netB_input_nc = opt.output_nc * 2
-            self.D1=self.get_D(34+14+3+mesh_dim,opt)
+            self.D1=self.get_D(34+14+3+mesh_dim+dense_dim,opt)
             ##self.D1 = self.get_D(34 + 14 + 3, opt)
             self.D2=self.get_D(20+18,opt)
             self.D=self.get_D(27,opt)
@@ -282,7 +285,7 @@ class Pix2PixHDModel(BaseModel):
         return noise.cuda()
     #data['label'],data['edge'],img_fore.cuda()),Variable(mask_clothes, ,Variable(data['color'].cuda()),Variable(all_clothes_label.cuda()))
     
-    def forward(self,label,pre_clothes_mask,img_fore,clothes_mask,clothes,all_clothes_label,real_image,pose,mask, person_lm, cloth_lm, cloth_rep, mesh):
+    def forward(self,label,pre_clothes_mask,img_fore,clothes_mask,clothes,all_clothes_label,real_image,pose,mask, person_lm, cloth_lm, cloth_rep, mesh, dense):
         # Encode Inputs
         #ipdb.set_trace()
         input_label,masked_label,all_clothes_label= self.encode_input(label,clothes_mask,all_clothes_label)
@@ -310,6 +313,9 @@ class Pix2PixHDModel(BaseModel):
             G1_in = torch.cat([pre_clothes_mask,clothes,all_clothes_label,pose,self.gen_noise(shape), mesh],dim=1)
         else:
             G1_in = torch.cat([pre_clothes_mask, clothes, all_clothes_label, pose, self.gen_noise(shape)], dim=1)
+
+        if self.opt.denseplus:
+            G1_in = torch.cat([pre_clothes_mask, clothes, all_clothes_label, dense, pose, self.gen_noise(shape)], dim=1)
 
         arm_label=self.G1.refine(G1_in)
         arm_label=self.sigmoid(arm_label)

@@ -86,6 +86,14 @@ class AlignedDataset(BaseDataset):
             self.S_paths = sorted(make_dataset(self.dir_S))
             self.SR_paths = make_dataset(self.dir_S)
 
+        if opt.isTrain or opt.use_encoded_image:
+            dir_D = '_dense'
+            self.dir_D = os.path.join(opt.dataroot, opt.phase + dir_D)
+            self.D_paths = sorted(make_dataset(self.dir_D))
+            self.DR_paths = make_dataset(self.dir_D)
+
+            #dense = Image.open(osp.join(self.data_path, 'dense', im_name.replace('.jpg', '_IUV.png')))
+
         ### input CLM (Cloth Fashion Landmarks)
         if opt.isTrain or opt.use_encoded_image:
             dir_CLM = '_landmarks_cloth'
@@ -177,14 +185,14 @@ class AlignedDataset(BaseDataset):
         C = Image.open(C_path).convert('RGB')
         C_tensor = transform_B(C)
 
-        ##Edge
+        ## Edge
         E_path = self.E_paths[test]
         # print(E_path)
         E = Image.open(E_path).convert('L')
         E_tensor = transform_A(E)
 
 
-        ##Pose
+        ## Pose
         pose_name =B_path.replace('.png', '_keypoints.json').replace('.jpg','_keypoints.json').replace('train_img','train_pose')
         with open(osp.join(pose_name), 'r') as f:
             pose_label = json.load(f)
@@ -218,6 +226,11 @@ class AlignedDataset(BaseDataset):
         S = Image.open(S_path).convert('L')
         S_tensor = transform_A(S)
 
+        ## Dense
+        D_path = self.D_paths[test]
+        # print(E_path)
+        D = Image.open(D_path).convert('RGB')
+        D_tensor = transform_A(D)
 
         ## Person Landmarks
         PLM_path = self.PLM_paths[test]
@@ -297,6 +310,7 @@ class AlignedDataset(BaseDataset):
                            'colormask': MC_tensor,
                            'pose':P_tensor,
                            'mesh': S_tensor,
+                           'dense': D_tensor,
                            'cloth_lm': CLM_tensor,
                            'person_lm': PLM_tensor,
                            'cloth_representation': cloth_rep

@@ -143,6 +143,9 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         img_fore_wc=img_fore*mask_fore
         all_clothes_label=changearm(data['label'])
 
+        if opt.dense:
+            all_clothes_label = data['dense']
+
 
         ############## Forward Pass ######################
         losses, fake_image, real_image,input_label,L1_loss,style_loss,LM_loss,clothes_mask,warped,refined,CE_loss,rx,ry,cx,cy,rg,cg = \
@@ -158,7 +161,8 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
                   Variable(data['person_lm'].cuda()),
                   Variable(data['cloth_lm'].cuda()),
                   Variable(data['cloth_representation'].cuda()),
-                  Variable(data['mesh'].cuda())
+                  Variable(data['mesh'].cuda()),
+                  Variable(data['dense'].cuda())
                   )
 
         # sum per device losses
@@ -176,7 +180,8 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         writer.add_scalar('loss_d', loss_D, step)
         writer.add_scalar('loss_g', loss_G, step)
         writer.add_scalar('loss_L1', torch.mean(L1_loss), step)
-        writer.add_scalar('loss_LM', torch.mean(LM_loss), step)
+        if opt.landmarks:
+            writer.add_scalar('loss_LM', torch.mean(LM_loss), step)
         writer.add_scalar('CE_loss', torch.mean(CE_loss), step)
         writer.add_scalar('rx', torch.mean(rx), step)
         writer.add_scalar('ry', torch.mean(ry), step)
@@ -209,7 +214,9 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
             d=torch.cat([clothes_mask,clothes_mask,clothes_mask],1)
             e=warped
             f=refined
-            combine = torch.cat([a[0],b[0],c[0],d[0],e[0],f[0]], 2).squeeze()
+            z = torch.cat([all_clothes_label, all_clothes_label, all_clothes_label],1).cuda()
+            #combine = torch.cat([a[0],b[0],c[0],d[0],e[0], z[0]], 2).squeeze()
+            combine = torch.cat([a[0], b[0], c[0], d[0], e[0], f[0]], 2).squeeze()
             cv_img=(combine.permute(1,2,0).detach().cpu().numpy()+1)/2
             writer.add_image('combine', (combine.data + 1) / 2.0, step)
             rgb=(cv_img*255).astype(np.uint8)

@@ -59,6 +59,11 @@ class BaseOptions():
         self.parser.add_argument('--transfer', action='store_true', help='Use landmarks')
         self.parser.add_argument('--mesh_g', action='store_true',
                                  help='if true, use mesh in last generator')
+        self.parser.add_argument('--dense', action='store_true',
+                                 help='if true, use dense')
+
+        self.parser.add_argument('--denseplus', action='store_true',
+                                 help='if true, use dense with shape')
 
         self.initialized = True
 
