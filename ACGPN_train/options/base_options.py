@@ -59,11 +59,19 @@ class BaseOptions():
         self.parser.add_argument('--transfer', action='store_true', help='Use landmarks')
         self.parser.add_argument('--mesh_g', action='store_true',
                                  help='if true, use mesh in last generator')
+
+        # Dense options
         self.parser.add_argument('--dense', action='store_true',
                                  help='if true, use dense')
 
         self.parser.add_argument('--denseplus', action='store_true',
                                  help='if true, use dense with shape')
+
+        self.parser.add_argument('--densestack', action='store_true',
+                                 help='if true, use dense stacked on 6 channels')
+
+        self.parser.add_argument('--denseone', action='store_true',
+                                 help='if true, use dense as 1-channel segmentation')
 
         self.initialized = True
 

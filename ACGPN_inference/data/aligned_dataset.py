@@ -85,6 +85,13 @@ class AlignedDataset(BaseDataset):
             self.S_paths = sorted(make_dataset(self.dir_S))
             self.SR_paths = make_dataset(self.dir_S)
 
+        ### input D (Dense Pose)
+        if opt.isTrain or opt.use_encoded_image:
+            dir_D = '_dense'
+            self.dir_D = os.path.join(opt.dataroot, opt.phase + dir_D)
+            self.D_paths = sorted(make_dataset(self.dir_D))
+            self.DR_paths = make_dataset(self.dir_D)
+
         ### input CLM (Cloth Fashion Landmarks)
         if opt.isTrain or opt.use_encoded_image:
             dir_CLM = '_landmarks_cloth'
@@ -216,9 +223,13 @@ class AlignedDataset(BaseDataset):
 
         ## Mesh
         S_path = self.S_paths[test]
-        # print(E_path)
         S = Image.open(S_path).convert('L')
         S_tensor = transform_A(S)
+
+        ## Dense
+        D_path = self.D_paths[test]
+        D = Image.open(D_path).convert('RGB')
+        D_tensor = transform_A(D)
 
 
         ## Cloth Landmarks
@@ -269,6 +280,7 @@ class AlignedDataset(BaseDataset):
                            'name':name,
                            'name_c': name_c,
                            'mesh': S_tensor,
+                           'dense': D_tensor,
                            'cloth_lm': CLM_tensor,
                            'cloth_representation': cloth_rep
                           }
@@ -280,6 +292,7 @@ class AlignedDataset(BaseDataset):
                           'path': A_path,
                           'path_ref': AR_path,
                           'mesh': S_tensor,
+                          'dense': D_tensor,
                           'cloth_lm': CLM_tensor,
                           'cloth_representation': cloth_rep
                           }

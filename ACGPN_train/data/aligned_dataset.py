@@ -233,6 +233,40 @@ class AlignedDataset(BaseDataset):
         D = Image.open(D_path).convert('RGB')
         D_tensor = transform_A(D)
 
+        if self.opt.denseone:
+            d_arr = np.array(D)
+            D = d_arr[:, :, 2]
+            D_tensor = transform_B(D)
+
+        if self.opt.densestack:
+            D = Image.open(D_path).convert('RGB')
+            d = np.array(D)
+
+            r_arm_values = [[3, 3], [16, 18], [20, 22]]
+            l_arm_values = [[4, 4], [15, 17], [19, 21]]
+            arm_values = r_arm_values + l_arm_values
+
+            dense = torch.zeros(6, 256, 192)
+            dense_part_show = np.copy(d[:, :, 2])
+
+            i = 0
+            for val in arm_values:
+                dense_part_show = np.copy(d[:, :, 2])
+
+                dense_part_show[dense_part_show < val[0]] = 0
+                dense_part_show[dense_part_show > val[1]] = 0
+                dense_part_show[dense_part_show == val[0] + 1] = 0
+                dense_part_show[dense_part_show == val[0]] = 255
+                dense_part_show[dense_part_show == val[1]] = 255
+
+                dense_part = np.expand_dims(dense_part_show, axis=0)
+                dense_part = torch.from_numpy(dense_part)
+
+                dense[i] = dense_part[0]
+                i += 1
+
+            D_tensor = dense
+
         ## Person Landmarks
         PLM_path = self.PLM_paths[test]
 

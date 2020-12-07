@@ -122,13 +122,23 @@ class Pix2PixHDModel(BaseModel):
         if self.opt.denseplus:
             dense_dim = 3
 
+        if self.opt.densestack:
+            dense_dim = 6
+
     
         self.Unet=networks.define_UnetMask(self.opt, 4,self.gpu_ids)
         ## self.Unet = networks.define_UnetMask(4, self.gpu_ids)
         self.G1 = networks.define_Refine(37 + mesh_dim + dense_dim,14,self.gpu_ids)
         #self.G1 = networks.define_Refine(37, 14, self.gpu_ids)
-        self.G2 = networks.define_Refine(19+18,1,self.gpu_ids)
-        self.G = networks.define_Refine(24 + mesh_g_dim,3,self.gpu_ids)
+
+        if self.opt.transfer:
+            with torch.no_grad:
+                self.G2 = networks.define_Refine(19 + 18, 1, self.gpu_ids)
+                self.G = networks.define_Refine(24 + mesh_g_dim, 3, self.gpu_ids)
+        else:
+            self.G2 = networks.define_Refine(19+18,1,self.gpu_ids)
+            self.G = networks.define_Refine(24 + mesh_g_dim,3,self.gpu_ids)
+
         #ipdb.set_trace()
         self.tanh=nn.Tanh()
         self.sigmoid=nn.Sigmoid()
@@ -141,13 +151,21 @@ class Pix2PixHDModel(BaseModel):
             netB_input_nc = opt.output_nc * 2
             self.D1=self.get_D(34+14+3+mesh_dim+dense_dim,opt)
             ##self.D1 = self.get_D(34 + 14 + 3, opt)
-            self.D2=self.get_D(20+18,opt)
-            self.D=self.get_D(27,opt)
+
+            if not self.opt.transfer:
+                self.D2=self.get_D(20+18,opt)
+                self.D=self.get_D(27,opt)
+
             self. D3=self.get_D(7,opt)
             #self.netB = networks.define_B(netB_input_nc, opt.output_nc, 32, 3, 3, opt.norm, gpu_ids=self.gpu_ids)        
             
         if self.opt.verbose:
                 print('---------- Networks initialized -------------')
+
+        if self.opt.transfer:
+            # load frozen networks
+            self.load_network(self.G2, 'G2', opt.which_epoch, self.opt.load_pretrain)
+            self.load_network(self.G, 'G', opt.which_epoch,  self.opt.load_pretrain)
 
         # load networks
         # if not self.isTrain or opt.continue_train or opt.load_pretrain:
@@ -296,6 +314,8 @@ class Pix2PixHDModel(BaseModel):
         pre_clothes_mask=torch.FloatTensor((pre_clothes_mask.detach().cpu().numpy() > 0.5).astype(np.float)).cuda()
         clothes=clothes*pre_clothes_mask
 
+        dense = dense
+
         #clothes_mask -> target
         #pre_clothes_mask -> source
 
@@ -315,8 +335,9 @@ class Pix2PixHDModel(BaseModel):
         else:
             G1_in = torch.cat([pre_clothes_mask, clothes, all_clothes_label, pose, self.gen_noise(shape)], dim=1)
 
-        if self.opt.denseplus:
+        if self.opt.denseplus or self.opt.densestack:
             G1_in = torch.cat([pre_clothes_mask, clothes, all_clothes_label, dense, pose, self.gen_noise(shape)], dim=1)
+
 
         arm_label=self.G1.refine(G1_in)
         arm_label=self.sigmoid(arm_label)
