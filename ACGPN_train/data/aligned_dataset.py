@@ -86,6 +86,7 @@ class AlignedDataset(BaseDataset):
             self.S_paths = sorted(make_dataset(self.dir_S))
             self.SR_paths = make_dataset(self.dir_S)
 
+        ### input D (Dense Pose)
         if opt.isTrain or opt.use_encoded_image:
             dir_D = '_dense'
             self.dir_D = os.path.join(opt.dataroot, opt.phase + dir_D)

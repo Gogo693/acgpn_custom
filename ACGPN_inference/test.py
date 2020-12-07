@@ -104,8 +104,6 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         epoch_iter = epoch_iter % dataset_size
     for i, data in enumerate(dataset, start=epoch_iter):
 
-
-
         iter_start_time = time.time()
         total_steps += opt.batchSize
         epoch_iter += opt.batchSize
@@ -125,7 +123,8 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         img_fore_wc = img_fore * mask_fore
         all_clothes_label = changearm(data['label'])
 
-
+        if opt.dense:
+            all_clothes_label = data['dense']
 
         ############## Forward Pass ######################
         losses, fake_image, real_image, input_label,L1_loss,style_loss,clothes_mask,CE_loss,rgb,alpha= \
@@ -140,6 +139,7 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
                   Variable(data['image'].cuda()) ,
                   Variable(data['cloth_representation'].cuda()),
                   Variable(data['mesh'].cuda()),
+                  Variable(data['dense'].cuda()),
                   Variable(mask_fore.cuda()))
 
         # sum per device losses
@@ -188,9 +188,10 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         a = generate_label_color(generate_label_plain(input_label)).float().cuda()
         b = real_image.float().cuda()
         c = fake_image.float().cuda()
-        d=torch.cat([clothes_mask,clothes_mask,clothes_mask],1)
+        d = torch.cat([clothes_mask,clothes_mask,clothes_mask],1)
+        z = data['dense'].cuda()
 
-        combine = torch.cat([a[0],d[0],b[0],c[0],rgb[0]], 2).squeeze()
+        combine = torch.cat([z[0],a[0],d[0],b[0],c[0],rgb[0]], 2).squeeze()
         cv_img = (combine.permute(1, 2, 0).detach().cpu().numpy() + 1) / 2
         if step % 1 == 0:
             # writer.add_image('combine', (combine.data + 1) / 2.0, step)

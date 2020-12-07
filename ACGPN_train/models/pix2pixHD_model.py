@@ -106,6 +106,7 @@ class Pix2PixHDModel(BaseModel):
 
         mesh_dim = 0
         lm_dim = 0
+        dense_dim = 0
 
         if self.opt.mesh:
             mesh_dim = 1
