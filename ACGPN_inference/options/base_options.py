@@ -62,6 +62,18 @@ class BaseOptions():
         self.parser.add_argument('--denseplus', action='store_true',
                                  help='if true, use dense with shape')
 
+        self.parser.add_argument('--denseone', action='store_true',
+                                 help='if true, use dense as 1-channel segmentation')
+
+        self.parser.add_argument('--densearms', action='store_true',
+                                 help='if true, use dense as 2 channel arms')
+
+        self.parser.add_argument('--densestack', action='store_true',
+                                 help='if true, use dense stacked on 6 channels')
+
+        self.parser.add_argument('--clothlmg2', action='store_true',
+                                 help='if true, freeze G2 and G')
+
         self.initialized = True
 
     def parse(self, save=True):

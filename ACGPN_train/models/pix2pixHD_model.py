@@ -107,6 +107,7 @@ class Pix2PixHDModel(BaseModel):
         mesh_dim = 0
         lm_dim = 0
         dense_dim = 0
+        cloth_lm_dim = 0
 
         if self.opt.mesh:
             mesh_dim = 1
@@ -125,6 +126,9 @@ class Pix2PixHDModel(BaseModel):
         if self.opt.densestack:
             dense_dim = 6
 
+        if self.opt.clothlmg2:
+            cloth_lm_dim = 6
+
     
         self.Unet=networks.define_UnetMask(self.opt, 4,self.gpu_ids)
         ## self.Unet = networks.define_UnetMask(4, self.gpu_ids)
@@ -132,11 +136,11 @@ class Pix2PixHDModel(BaseModel):
         #self.G1 = networks.define_Refine(37, 14, self.gpu_ids)
 
         if self.opt.transfer:
-            with torch.no_grad:
-                self.G2 = networks.define_Refine(19 + 18, 1, self.gpu_ids)
+            with torch.no_grad():
+                self.G2 = networks.define_Refine(19 + 18 + cloth_lm_dim, 1, self.gpu_ids)
                 self.G = networks.define_Refine(24 + mesh_g_dim, 3, self.gpu_ids)
         else:
-            self.G2 = networks.define_Refine(19+18,1,self.gpu_ids)
+            self.G2 = networks.define_Refine(19+18 + cloth_lm_dim,1,self.gpu_ids)
             self.G = networks.define_Refine(24 + mesh_g_dim,3,self.gpu_ids)
 
         #ipdb.set_trace()
@@ -152,9 +156,13 @@ class Pix2PixHDModel(BaseModel):
             self.D1=self.get_D(34+14+3+mesh_dim+dense_dim,opt)
             ##self.D1 = self.get_D(34 + 14 + 3, opt)
 
-            if not self.opt.transfer:
-                self.D2=self.get_D(20+18,opt)
-                self.D=self.get_D(27,opt)
+            if self.opt.transfer:
+                with torch.no_grad():
+                    self.D2=self.get_D(20+18 + cloth_lm_dim,opt)
+                    self.D=self.get_D(27,opt)
+            else:
+                self.D2 = self.get_D(20 + 18 + cloth_lm_dim, opt)
+                self.D = self.get_D(27, opt)
 
             self. D3=self.get_D(7,opt)
             #self.netB = networks.define_B(netB_input_nc, opt.output_nc, 32, 3, 3, opt.norm, gpu_ids=self.gpu_ids)        
@@ -347,10 +355,16 @@ class Pix2PixHDModel(BaseModel):
         armlabel_map=generate_discrete_label(arm_label.detach(),14,False)
         dis_label=generate_discrete_label(arm_label.detach(),14)
 
-        G2_in=torch.cat([pre_clothes_mask,clothes,masked_label,pose,self.gen_noise(shape)],1)
+        if self.opt.clothlmg2:
+            G2_in=torch.cat([pre_clothes_mask,cloth_rep,masked_label,pose,self.gen_noise(shape)],1)
+        else:
+            G2_in = torch.cat([pre_clothes_mask, clothes, masked_label, pose, self.gen_noise(shape)], 1)
+
         fake_cl=self.G2.refine(G2_in)
         fake_cl=self.sigmoid(fake_cl)
-        CE_loss += self.BCE(fake_cl, clothes_mask)*10
+
+        if not self.opt.transfer:
+            CE_loss += self.BCE(fake_cl, clothes_mask)*10
         
         #ipdb.set_trace()
         fake_cl_dis=torch.FloatTensor((fake_cl.detach().cpu().numpy()>0.5).astype(np.float)).cuda()
@@ -392,11 +406,22 @@ class Pix2PixHDModel(BaseModel):
         ## THE POOL TO SAVE IMAGES\
         ##
 
-        input_pool=[G1_in,G2_in,G_in,torch.cat([clothes_mask,clothes],1)]        ##fake_cl_dis to replace
+
+        if self.opt.transfer:
+            input_pool = [G1_in, torch.cat([clothes_mask, clothes], 1)]
+            real_pool = [masked_label, real_image * clothes_mask]
+            fake_pool = [arm_label, fake_c]
+            D_pool = [self.D1, self.D3]
+        else:
+            input_pool=[G1_in,G2_in,G_in,torch.cat([clothes_mask,clothes],1)]        ##fake_cl_dis to replace
+            real_pool = [masked_label, clothes_mask, real_image, real_image * clothes_mask]
+            fake_pool = [arm_label, fake_cl, fake_image, fake_c]
+            D_pool = [self.D1, self.D2, self.D, self.D3]
+
         #ipdb.set_trace()
-        real_pool=[masked_label,clothes_mask,real_image,real_image*clothes_mask]
-        fake_pool=[arm_label,fake_cl,fake_image,fake_c]
-        D_pool=[self.D1,self.D2,self.D,self.D3]
+        ## real_pool=[masked_label,clothes_mask,real_image,real_image*clothes_mask]
+        ## fake_pool=[arm_label,fake_cl,fake_image,fake_c]
+        ## D_pool=[self.D1,self.D2,self.D,self.D3]
         pool_lenth=len(fake_pool)
         loss_D_fake=0
         loss_D_real=0
@@ -438,9 +463,14 @@ class Pix2PixHDModel(BaseModel):
             LM_loss = self.criterionLM(warped_cloth_lm, person_lm)
 
         loss_G_VGG += self.criterionVGG.warp(fake_c, real_image*clothes_mask) *20
-        loss_G_VGG += self.criterionVGG(fake_image, real_image) *10
 
-        L1_loss=self.criterionFeat(fake_image , real_image )
+        if not self.opt.transfer:
+            loss_G_VGG += self.criterionVGG(fake_image, real_image) *10
+
+
+        L1_loss = 0
+        if not self.opt.transfer:
+            L1_loss=self.criterionFeat(fake_image , real_image )
         #
         L1_loss+=self.criterionFeat(warped_mask,clothes_mask)+self.criterionFeat(warped,real_image*clothes_mask)
         L1_loss+=self.criterionFeat(fake_c,real_image*clothes_mask)*0.2
@@ -471,12 +501,15 @@ class Pix2PixHDModel(BaseModel):
 
     def save(self, which_epoch):
         self.save_network(self.Unet, 'U', which_epoch, self.gpu_ids)
-        self.save_network(self.G,'G',which_epoch, self.gpu_ids)
+
+        if not self.opt.transfer:
+            self.save_network(self.G,'G',which_epoch, self.gpu_ids)
+            self.save_network(self.G2, 'G2', which_epoch, self.gpu_ids)
+            self.save_network(self.D, 'D', which_epoch, self.gpu_ids)
+            self.save_network(self.D2, 'D2', which_epoch, self.gpu_ids)
+
         self.save_network(self.G1,'G1',which_epoch, self.gpu_ids)
-        self.save_network(self.G2, 'G2', which_epoch, self.gpu_ids)
-        self.save_network(self.D, 'D', which_epoch, self.gpu_ids)
         self.save_network(self.D1, 'D1', which_epoch, self.gpu_ids)
-        self.save_network(self.D2, 'D2', which_epoch, self.gpu_ids)
         self.save_network(self.D3, 'D3', which_epoch, self.gpu_ids)
         self.save_network(self.optimizer_G, 'OG', which_epoch, self.gpu_ids)
         self.save_network(self.optimizer_D, 'OD', which_epoch, self.gpu_ids)

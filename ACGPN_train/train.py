@@ -16,7 +16,7 @@ import cv2
 import datetime
 import ipdb
 
-writer = SummaryWriter('runs/uniform_all')
+
 SIZE=320
 NC=14
 def generate_label_plain(inputs):
@@ -86,6 +86,7 @@ os.makedirs('sample',exist_ok=True)
 opt = TrainOptions().parse()
 
 #opt.checkpoints_dir = opt.checkpoints_dir + '_' + opt.name
+writer = SummaryWriter('runs/' + opt.name)
 iter_path = os.path.join(opt.checkpoints_dir, opt.name, 'iter.txt')
 
 if opt.continue_train:

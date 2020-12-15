@@ -147,6 +147,7 @@ class Pix2PixHDModel(BaseModel):
         mesh_dim = 0
         lm_dim = 0
         dense_dim = 0
+        cloth_lm_dim = 0
 
         if self.opt.mesh:
             mesh_dim = 1
@@ -161,10 +162,16 @@ class Pix2PixHDModel(BaseModel):
         if self.opt.denseplus:
             dense_dim = 3
 
+        if self.opt.densestack:
+            dense_dim = 6
+
+        if self.opt.clothlmg2:
+            cloth_lm_dim = 6
+
         with torch.no_grad():
             self.Unet = networks.define_UnetMask(self.opt, 4, self.gpu_ids).eval()
             self.G1 = networks.define_Refine(37 + mesh_dim + dense_dim, 14, self.gpu_ids).eval()
-            self.G2 = networks.define_Refine(19+18, 1, self.gpu_ids).eval()
+            self.G2 = networks.define_Refine(19+18 + cloth_lm_dim, 1, self.gpu_ids).eval()
             self.G = networks.define_Refine(24 + mesh_g_dim, 3, self.gpu_ids).eval()
 
         self.tanh = nn.Tanh()
@@ -316,7 +323,7 @@ class Pix2PixHDModel(BaseModel):
         else:
             G1_in = torch.cat([pre_clothes_mask, clothes, all_clothes_label, pose, self.gen_noise(shape)], dim=1)
 
-        if self.opt.denseplus:
+        if self.opt.denseplus or self.opt.densestack:
             G1_in = torch.cat([pre_clothes_mask, clothes, all_clothes_label, dense, pose, self.gen_noise(shape)], dim=1)
 
 
@@ -327,7 +334,12 @@ class Pix2PixHDModel(BaseModel):
 
         armlabel_map = generate_discrete_label(arm_label.detach(), 14, False)
         dis_label = generate_discrete_label(arm_label.detach(), 14)
-        G2_in = torch.cat([pre_clothes_mask, clothes, dis_label,pose,self.gen_noise(shape)], 1)
+
+        if self.opt.clothlmg2:
+            G2_in = torch.cat([pre_clothes_mask, cloth_rep, dis_label,pose,self.gen_noise(shape)], 1)
+        else:
+            G2_in = torch.cat([pre_clothes_mask, clothes, dis_label,pose,self.gen_noise(shape)], 1)
+
         fake_cl = self.G2.refine(G2_in)
         fake_cl = self.sigmoid(fake_cl)
         CE_loss += self.BCE(fake_cl, clothes_mask) * 10

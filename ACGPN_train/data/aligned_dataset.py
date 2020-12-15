@@ -234,9 +234,14 @@ class AlignedDataset(BaseDataset):
         D_tensor = transform_A(D)
 
         if self.opt.denseone:
+            '''
             d_arr = np.array(D)
             D = d_arr[:, :, 2]
-            D_tensor = transform_B(D)
+            D = np.expand_dims(D, axis=2)
+            D_tensor = transform_A(D)
+            '''
+            D = Image.open(D_path).convert('L')
+            D_tensor = transform_A(D)
 
         if self.opt.densestack:
             D = Image.open(D_path).convert('RGB')
@@ -264,6 +269,45 @@ class AlignedDataset(BaseDataset):
 
                 dense[i] = dense_part[0]
                 i += 1
+
+            D_tensor = dense
+
+        if self.opt.densearms:
+            D = Image.open(D_path).convert('RGB')
+            d = np.array(D)
+
+            r_arm_values = [3, 16, 18, 20, 22]
+            l_arm_values = [4, 15, 17, 19, 21]
+
+            dense = torch.zeros(2, 256, 192)
+
+            dense_left = np.copy(d[:, :, 2])
+            dense_left[dense_left < 3] = 0
+            dense_left[dense_left > 22] = 0
+
+            dense_right = np.copy(d[:, :, 2])
+            dense_right[dense_right < 3] = 0
+            dense_right[dense_right > 22] = 0
+
+            for val in range(3, 23):
+                if val in l_arm_values:
+                    dense_left[dense_left == val] = 255
+                else:
+                    dense_left[dense_left == val] = 0
+
+                if val in r_arm_values:
+                    dense_right[dense_right == val] = 255
+                else:
+                    dense_right[dense_right == val] = 0
+
+            dense_left = np.expand_dims(dense_left, axis=0)
+            dense_right = np.expand_dims(dense_right, axis=0)
+
+            dense_left = torch.from_numpy(dense_left)
+            dense_right = torch.from_numpy(dense_right)
+
+            dense[0] = dense_left
+            dense[1] = dense_right
 
             D_tensor = dense
 
