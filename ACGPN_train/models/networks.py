@@ -545,13 +545,13 @@ class UnetMask(nn.Module):
 
         if self.opt.clothrep:
             # cloth rep input
-            input, warped_mask, warped_cloth_lm, rx, ry, cx, cy, rg,cg = self.stn(input,
+            warped_cloth, warped_mask, warped_cloth_lm, rx, ry, cx, cy, rg,cg = self.stn(input,
                                                                                   torch.cat([mask, refer, cloth_rep], 1),
                                                                                   mask,
                                                                                   lm_c_map)
         else:
             # no cloth rep
-            input, warped_mask, warped_cloth_lm, rx, ry, cx, cy, rg, cg = self.stn(input,
+            warped_cloth, warped_mask, warped_cloth_lm, rx, ry, cx, cy, rg, cg = self.stn(input,
                                                                                torch.cat([mask, refer, input], 1),
                                                                                mask,
                                                                                lm_c_map)
@@ -562,7 +562,7 @@ class UnetMask(nn.Module):
 
 
         ## conv1 = self.conv1(torch.cat([cloth_rep.detach(), input.detach()], 1))
-        conv1 = self.conv1(torch.cat([refer.detach(), input.detach()], 1))
+        conv1 = self.conv1(torch.cat([refer.detach(), warped_cloth.detach()], 1))
         pool1 = self.pool1(conv1)
 
         conv2 = self.conv2(pool1)
@@ -589,7 +589,7 @@ class UnetMask(nn.Module):
 
         up9 = self.up9(conv8)
         conv9 = self.conv9(torch.cat([conv1, up9], 1))
-        return conv9, input, warped_mask,rx,ry,cx,cy,rg,cg, warped_cloth_lm
+        return conv9, warped_cloth, warped_mask,rx,ry,cx,cy,rg,cg, warped_cloth_lm
 
 class Unet(nn.Module):
     def __init__(self, input_nc, output_nc=3):

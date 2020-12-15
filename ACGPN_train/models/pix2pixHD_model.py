@@ -349,7 +349,9 @@ class Pix2PixHDModel(BaseModel):
 
         arm_label=self.G1.refine(G1_in)
         arm_label=self.sigmoid(arm_label)
-        CE_loss = self.cross_entropy2d(arm_label, (label * (1 - clothes_mask)).transpose(0, 1)[0].long())*10
+        loss_G1 = self.cross_entropy2d(arm_label, (label * (1 - clothes_mask)).transpose(0, 1)[0].long())*10
+        CE_loss = 0
+        CE_loss += loss_G1
 
 
         armlabel_map=generate_discrete_label(arm_label.detach(),14,False)
@@ -364,7 +366,8 @@ class Pix2PixHDModel(BaseModel):
         fake_cl=self.sigmoid(fake_cl)
 
         if not self.opt.transfer:
-            CE_loss += self.BCE(fake_cl, clothes_mask)*10
+            loss_G2 = self.BCE(fake_cl, clothes_mask)*10
+            CE_loss += loss_G2
         
         #ipdb.set_trace()
         fake_cl_dis=torch.FloatTensor((fake_cl.detach().cpu().numpy()>0.5).astype(np.float)).cuda()
@@ -423,6 +426,8 @@ class Pix2PixHDModel(BaseModel):
         ## fake_pool=[arm_label,fake_cl,fake_image,fake_c]
         ## D_pool=[self.D1,self.D2,self.D,self.D3]
         pool_lenth=len(fake_pool)
+        loss_D_fake_pool = []
+        loss_D_real_pool = []
         loss_D_fake=0
         loss_D_real=0
         loss_G_GAN=0
@@ -432,10 +437,14 @@ class Pix2PixHDModel(BaseModel):
 
             # Fake Detection and Loss
             pred_fake_pool = self.discriminate(D_pool[iter_p],input_pool[iter_p].detach(), fake_pool[iter_p], use_pool=True)
-            loss_D_fake += self.criterionGAN(pred_fake_pool, False)
+            loss_D_fake_temp = self.criterionGAN(pred_fake_pool, False)
+            loss_D_fake_pool.append(loss_D_fake_temp)
+            loss_D_fake += loss_D_fake_temp
             # Real Detection and Loss
             pred_real = self.discriminate(D_pool[iter_p],input_pool[iter_p].detach(), real_pool[iter_p])
-            loss_D_real += self.criterionGAN(pred_real, True)
+            loss_D_real_temp = self.criterionGAN(pred_real, True)
+            loss_D_real_pool.append(loss_D_real_temp)
+            loss_D_real += loss_D_real_temp
 
             # GAN loss (Fake Passability Loss)
             pred_fake = D_pool[iter_p].forward(torch.cat((input_pool[iter_p].detach(), fake_pool[iter_p]), dim=1))
@@ -457,25 +466,34 @@ class Pix2PixHDModel(BaseModel):
         loss_G_VGG = 0
         loss_G_VGG += self.criterionVGG.warp(warped,real_image*clothes_mask)+ self.criterionVGG.warp(comp_fake_c, real_image*clothes_mask) * 10
 
+        loss_G3 = loss_G_VGG
+
         # LM loss
         LM_loss = 0
         if self.opt.landmarks:
             LM_loss = self.criterionLM(warped_cloth_lm, person_lm)
 
         loss_G_VGG += self.criterionVGG.warp(fake_c, real_image*clothes_mask) *20
+        loss_G3 = loss_G_VGG
 
         if not self.opt.transfer:
-            loss_G_VGG += self.criterionVGG(fake_image, real_image) *10
+            loss_G4 = self.criterionVGG(fake_image, real_image) *10
+            loss_G_VGG += loss_G4
 
 
         L1_loss = 0
-        if not self.opt.transfer:
-            L1_loss=self.criterionFeat(fake_image , real_image )
-        #
         L1_loss+=self.criterionFeat(warped_mask,clothes_mask)+self.criterionFeat(warped,real_image*clothes_mask)
         L1_loss+=self.criterionFeat(fake_c,real_image*clothes_mask)*0.2
         L1_loss+=self.criterionFeat(comp_fake_c,real_image*clothes_mask)*10
         L1_loss+=self.criterionFeat(composition_mask,clothes_mask)
+
+        loss_G3 += L1_loss
+
+        if not self.opt.transfer:
+            loss_L1_G4 = self.criterionFeat(fake_image , real_image )
+            L1_loss += loss_L1_G4
+            loss_G4 += loss_L1_G4
+        #
 
         #
         # style_loss=self.criterionStyle(fake_image, real_image)*200
@@ -484,7 +502,8 @@ class Pix2PixHDModel(BaseModel):
         style_loss=L1_loss
         # Only return the fake_B image if necessary to save BW
         return [ self.loss_filter( loss_G_GAN, loss_G_GAN_Feat, loss_G_VGG, loss_D_real, loss_D_fake ),fake_c,comp_fake_c,dis_label
-       ,L1_loss,style_loss,LM_loss,fake_cl,warped,clothes,CE_loss,rx*0.1,ry*0.1,cx*0.1,cy*0.1,rg*0.1,cg*0.1]
+       ,L1_loss,style_loss,LM_loss,fake_cl,warped,clothes,CE_loss,rx*0.1,ry*0.1,cx*0.1,cy*0.1,rg*0.1,cg*0.1,
+                 loss_G1, loss_G2, loss_G3, loss_G4, loss_D_real_pool, loss_D_fake_pool]
 
     def inference(self, label, label_ref, image_ref):
 

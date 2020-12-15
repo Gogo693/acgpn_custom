@@ -149,7 +149,8 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
 
 
         ############## Forward Pass ######################
-        losses, fake_image, real_image,input_label,L1_loss,style_loss,LM_loss,clothes_mask,warped,refined,CE_loss,rx,ry,cx,cy,rg,cg = \
+        losses, fake_image, real_image,input_label,L1_loss,style_loss,LM_loss,clothes_mask,warped,refined,CE_loss,rx,ry,cx,cy,rg,cg, \
+        loss_G1, loss_G2, loss_G3, loss_G4, loss_D_real_pool, loss_D_fake_pool = \
             model(Variable(data['label'].cuda()),
                   Variable(data['edge'].cuda()),
                   Variable(img_fore.cuda()),
@@ -192,6 +193,16 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         writer.add_scalar('loss_g_gan', loss_dict['G_GAN'], step)
         writer.add_scalar('loss_g_gan_feat', loss_dict['G_GAN_Feat'], step)
         writer.add_scalar('loss_g_vgg', loss_dict['G_VGG'], step)
+
+        writer.add_scalar('loss_g1', loss_G1, step)
+        writer.add_scalar('loss_g2', loss_G2, step)
+        writer.add_scalar('loss_g3', loss_G3, step)
+        writer.add_scalar('loss_g4', loss_G4, step)
+
+        for disc_n, disc_real in enumerate(loss_D_real_pool):
+            loss_D_mean = (loss_D_real_pool[disc_n] + loss_D_fake_pool[disc_n]) * 0.5
+            writer.add_scalar('loss_D' + str(disc_n), loss_D_mean, step)
+
   
         ############### Backward Pass ####################
         # update generator weights
