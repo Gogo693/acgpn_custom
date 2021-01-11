@@ -353,6 +353,9 @@ class Pix2PixHDModel(BaseModel):
 
         arm_label=self.G1.refine(G1_in)
         arm_label=self.sigmoid(arm_label)
+        print('loss_g1')
+        print(arm_label.shape)
+        print(((label * (1 - clothes_mask)).transpose(0, 1)[0].long()).shape)
         loss_G1 = self.cross_entropy2d(arm_label, (label * (1 - clothes_mask)).transpose(0, 1)[0].long())*10
         CE_loss = 0
         CE_loss += loss_G1
@@ -372,6 +375,9 @@ class Pix2PixHDModel(BaseModel):
         fake_cl=self.sigmoid(fake_cl)
 
         if not self.opt.transfer:
+            print('loss_g2')
+            print(fake_cl.shape)
+            print(clothes_mask.shape)
             loss_G2 = self.BCE(fake_cl, clothes_mask)*10
             CE_loss += loss_G2
         
@@ -498,6 +504,8 @@ class Pix2PixHDModel(BaseModel):
         loss_G3 += L1_loss
 
         if not self.opt.transfer:
+            print('g3')
+            print(fake_image.shape, real_image.shape)
             loss_L1_G4 = self.criterionFeat(fake_image , real_image )
             L1_loss += loss_L1_G4
             loss_G4 += loss_L1_G4
@@ -509,9 +517,16 @@ class Pix2PixHDModel(BaseModel):
         # loss_G_GAN_Feat=L1_loss
         style_loss=L1_loss
         # Only return the fake_B image if necessary to save BW
-        return [ self.loss_filter( loss_G_GAN, loss_G_GAN_Feat, loss_G_VGG, loss_D_real, loss_D_fake ),fake_c,comp_fake_c,dis_label
-       ,L1_loss,style_loss,LM_loss,fake_cl,warped,clothes,CE_loss,rx*0.1,ry*0.1,cx*0.1,cy*0.1,rg*0.1,cg*0.1,
-                 loss_G1, loss_G2, loss_G3, loss_G4, loss_D_real_pool, loss_D_fake_pool]
+
+        if self.opt.batchSize == 0:
+            return [ self.loss_filter( loss_G_GAN, loss_G_GAN_Feat, loss_G_VGG, loss_D_real, loss_D_fake ),fake_c,comp_fake_c,dis_label
+           ,L1_loss,style_loss,LM_loss,fake_cl,warped,clothes,CE_loss,rx*0.1,ry*0.1,cx*0.1,cy*0.1,rg*0.1,cg*0.1,
+                     loss_G1, loss_G2, loss_G3, loss_G4, loss_D_real_pool, loss_D_fake_pool]
+        else:
+            return [self.loss_filter(loss_G_GAN, loss_G_GAN_Feat, loss_G_VGG, loss_D_real, loss_D_fake), fake_c,
+                    comp_fake_c, dis_label
+                , L1_loss, style_loss, LM_loss, fake_cl, warped, clothes, CE_loss, rx * 0.1, ry * 0.1, cx * 0.1,
+                    cy * 0.1, rg * 0.1, cg * 0.1]
 
     def inference(self, label, label_ref, image_ref):
 

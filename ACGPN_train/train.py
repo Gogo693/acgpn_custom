@@ -210,24 +210,44 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         print(Variable(data['dense']).shape)
         '''
 
-        ############## Forward Pass ######################
-        losses, fake_image, real_image,input_label,L1_loss,style_loss,LM_loss,clothes_mask,warped,refined,CE_loss,rx,ry,cx,cy,rg,cg, \
-        loss_G1, loss_G2, loss_G3, loss_G4, loss_D_real_pool, loss_D_fake_pool = \
-            model(Variable(data['label'].cuda()),
-                  Variable(data['edge'].cuda()),
-                  Variable(img_fore.cuda()),
-                  Variable(mask_clothes.cuda()),
-                  Variable(data['color'].cuda()),
-                  Variable(all_clothes_label.cuda()),
-                  Variable(data['image'].cuda()),
-                  Variable(data['pose'].cuda()),
-                  Variable(data['mask'].cuda()),
-                  Variable(data['person_lm'].cuda()),
-                  Variable(data['cloth_lm'].cuda()),
-                  Variable(data['cloth_representation'].cuda()),
-                  Variable(data['mesh'].cuda()),
-                  Variable(data['dense'].cuda())
-                  )
+        if opt.batchSize == 0:
+            ############## Forward Pass ######################
+            losses, fake_image, real_image,input_label,L1_loss,style_loss,LM_loss,clothes_mask,warped,refined,CE_loss,rx,ry,cx,cy,rg,cg, \
+            loss_G1, loss_G2, loss_G3, loss_G4, loss_D_real_pool, loss_D_fake_pool = \
+                model(Variable(data['label'].cuda()),
+                      Variable(data['edge'].cuda()),
+                      Variable(img_fore.cuda()),
+                      Variable(mask_clothes.cuda()),
+                      Variable(data['color'].cuda()),
+                      Variable(all_clothes_label.cuda()),
+                      Variable(data['image'].cuda()),
+                      Variable(data['pose'].cuda()),
+                      Variable(data['mask'].cuda()),
+                      Variable(data['person_lm'].cuda()),
+                      Variable(data['cloth_lm'].cuda()),
+                      Variable(data['cloth_representation'].cuda()),
+                      Variable(data['mesh'].cuda()),
+                      Variable(data['dense'].cuda())
+                      )
+        else:
+            ############## Forward Pass ######################
+            losses, fake_image, real_image, input_label, L1_loss, style_loss, LM_loss, clothes_mask, warped, refined, CE_loss, rx, ry, cx, cy, rg, cg = \
+                model(Variable(data['label'].cuda()),
+                      Variable(data['edge'].cuda()),
+                      Variable(img_fore.cuda()),
+                      Variable(mask_clothes.cuda()),
+                      Variable(data['color'].cuda()),
+                      Variable(all_clothes_label.cuda()),
+                      Variable(data['image'].cuda()),
+                      Variable(data['pose'].cuda()),
+                      Variable(data['mask'].cuda()),
+                      Variable(data['person_lm'].cuda()),
+                      Variable(data['cloth_lm'].cuda()),
+                      Variable(data['cloth_representation'].cuda()),
+                      Variable(data['mesh'].cuda()),
+                      Variable(data['dense'].cuda())
+                      )
+
 
         # sum per device losses
         losses = [ torch.mean(x) if not isinstance(x, int) else x for x in losses ]
@@ -256,14 +276,15 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         writer.add_scalar('loss_g_gan_feat', loss_dict['G_GAN_Feat'], step)
         writer.add_scalar('loss_g_vgg', loss_dict['G_VGG'], step)
 
-        writer.add_scalar('loss_g1', loss_G1, step)
-        writer.add_scalar('loss_g2', loss_G2, step)
-        writer.add_scalar('loss_g3', loss_G3, step)
-        writer.add_scalar('loss_g4', loss_G4, step)
+        if opt.batchSize == 0:
+            writer.add_scalar('loss_g1', loss_G1, step)
+            writer.add_scalar('loss_g2', loss_G2, step)
+            writer.add_scalar('loss_g3', loss_G3, step)
+            writer.add_scalar('loss_g4', loss_G4, step)
 
-        for disc_n, disc_real in enumerate(loss_D_real_pool):
-            loss_D_mean = (loss_D_real_pool[disc_n] + loss_D_fake_pool[disc_n]) * 0.5
-            writer.add_scalar('loss_D' + str(disc_n), loss_D_mean, step)
+            for disc_n, disc_real in enumerate(loss_D_real_pool):
+                loss_D_mean = (loss_D_real_pool[disc_n] + loss_D_fake_pool[disc_n]) * 0.5
+                writer.add_scalar('loss_D' + str(disc_n), loss_D_mean, step)
 
   
         ############### Backward Pass ####################
@@ -290,7 +311,7 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
             f=refined
             z = torch.cat([all_clothes_label, all_clothes_label, all_clothes_label],1).cuda()
             #z = generate_label_color(generate_label_plain(all_clothes_label)).float().cuda()
-            combine = torch.cat([a[0],b[0],c[0],d[0],e[06], z[0]], 2).squeeze()
+            combine = torch.cat([a[0],b[0],c[0],d[0],e[0], z[0]], 2).squeeze()
             #combine = torch.cat([a[0], b[0], c[0], d[0], e[0], f[0]], 2).squeeze()
             cv_img=(combine.permute(1,2,0).detach().cpu().numpy()+1)/2
             writer.add_image('combine', (combine.data + 1) / 2.0, step)
