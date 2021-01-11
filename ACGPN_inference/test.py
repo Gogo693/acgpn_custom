@@ -8,12 +8,93 @@ import util.util as util
 import os
 import numpy as np
 import torch
+import torchvision
 from torch.autograd import Variable
 from tensorboardX import SummaryWriter
 import cv2
 writer = SummaryWriter('runs/G1G2')
 SIZE=320
 NC=14
+
+def save_img(opt, name, tensor_array):
+    step = 0
+    n_14 = 0
+
+    for t in tensor_array:
+        print(t.shape)
+
+    for t in tensor_array:
+
+        print(step)
+        if list(t.size())[1] == 14:
+            n_14 += 1
+            #t = t[0]
+            print(t.shape)
+
+            tensor_print_14 = torch.cat([t[0][0:3], t[0][3:6], t[0][6:9], t[0][9:12], t[0][11:14]], 2).squeeze()
+
+            '''
+            for iter, ten in enumerate(t):
+                if iter == 0:
+                    tensor_print_14 = torch.cat([ten,ten,ten], 1)
+                else:
+                    tensor_print_14 = torch.cat([tensor_print_14, torch.cat([ten,ten,ten], 1)], 0).squeeze()
+
+            '''
+            '''
+            for it, ten in enumerate(t):
+                #print(ten.shape)
+                ten = torch.unsqueeze(ten, 0)
+                #ten = torch.unsqueeze(ten, 0)
+                #print(ten.shape)
+
+                if it == 0:
+                    tensor_print_14 = torch.cat([ten, ten, ten])
+                    print(tensor_print_14.shape)
+                else:
+                    print(tensor_print_14.shape)
+                    print(ten.shape)
+                    temp = torch.cat([ten, ten, ten])
+                    print(temp.shape)
+                    tensor_print_14 = torch.cat([tensor_print_14, temp], 1).squeeze()
+            '''
+
+            print(tensor_print_14.shape)
+
+            cv_img = (tensor_print_14.permute(1, 2, 0).detach().cpu().numpy() + 1) / 2
+            ## cv_img = tensor_print_14.permute(1, 2, 0).detach().cpu().numpy()
+
+            # writer.add_image('combine', (combine.data + 1) / 2.0, step)
+            rgb = (cv_img * 255).astype(np.uint8)
+            bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+            ## bgr = cv2.cvtColor(rgb, cv2.COLOR_BGR2GRAY)
+            ## cv2.imwrite('sample_' + opt.name + '/' + data['name'][0].split('.')[0] + '_14dim_' + str(n_14) + '.jpg', bgr)
+            cv2.imwrite('singlesample_' + opt.name + '/' + data['name'][0].split('.')[0] + '_14dim_' + str(n_14) + '.jpg', bgr)
+        else:
+            if list(t.size())[1] == 1:
+                #print(t.shape)
+                t = torch.cat([t,t,t],1)
+                #print(t.shape)
+                t = t[0]
+            elif list(t.size())[1] == 3:
+                t = t[0]
+            elif list(t.size())[1] == 4:
+                t = t[0][0:3]
+
+            if step == 0:
+                tensor_print = t
+            else:
+                tensor_print = torch.cat([tensor_print, t], 2).squeeze()
+        step += 1
+
+    cv_img = (tensor_print.permute(1, 2, 0).detach().cpu().numpy() + 1) / 2
+
+    # writer.add_image('combine', (combine.data + 1) / 2.0, step)
+    rgb = (cv_img * 255).astype(np.uint8)
+    bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+    ## cv2.imwrite('sample_' + opt.name + '/' + data['name'][0].split('.')[0] + '_outputs' + '.jpg', bgr)
+    cv2.imwrite('singlesample_' + opt.name + '/' + data['name'][0].split('.')[0] + '_outputs' + '.jpg', bgr)
+
 def generate_label_plain(inputs):
     size = inputs.size()
     pred_batch = []
@@ -64,6 +145,45 @@ def changearm(old_label):
     label=label*(1-arm2)+arm2*4
     label=label*(1-noise)+noise*4
     return label
+
+
+def add_misscloth(ac_label, vt_label):
+    label = ac_label
+    #print(type(vt_label))
+    #pants_1 = torch.FloatTensor((vt_label.cpu().numpy() == 8).astype(np.int))
+    #pants_2 = torch.FloatTensor((vt_label.cpu().numpy() == 9).astype(np.int))
+    #pants_3 = torch.FloatTensor((vt_label.cpu().numpy() == 10).astype(np.int))
+    pants_miss = torch.FloatTensor((vt_label.cpu().numpy() == 12).astype(np.int))
+    ##pants_miss = torch.FloatTensor((vt_label.numpy() == 12).astype(np.float32))
+
+    #label = label + pants_1 * 8
+    #label = label + pants_2 * 8
+    #label = label + pants_3 * 8
+    label = label * (1 - pants_miss) + pants_miss * 8
+
+    return label
+
+def remove_bodyseg(seg):
+    label = seg
+    body = torch.FloatTensor((data['label'].cpu().numpy() == 4).astype(np.int))
+
+    label = label - body * 4
+    return label
+
+def changeseg(dense, seg):
+    dense_part_show = np.copy(dense[:, 2, :, :])
+    seg_body = (seg == 4).cpu().numpy().astype(np.int)
+
+    dense_body = (dense_part_show == 2).astype(np.int)
+    dense_body_cleaned = dense_body \
+                         - ((seg == 8).cpu().numpy().astype(np.int) * dense_body) \
+                         - ((seg == 11).cpu().numpy().astype(np.int) * dense_body) \
+                         - ((seg == 13).cpu().numpy().astype(np.int) * dense_body)
+    body = dense_body_cleaned + seg_body - (dense_body_cleaned * seg_body)
+    agn_body = torch.FloatTensor(seg.cpu().numpy().astype(np.int) - seg_body * 4 + body * 4)
+
+    return agn_body
+
 os.makedirs('sample',exist_ok=True)
 opt = TrainOptions().parse()
 os.makedirs('sample_' + opt.name, exist_ok = True)
@@ -125,11 +245,25 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         img_fore_wc = img_fore * mask_fore
         all_clothes_label = changearm(data['label'])
 
+        if opt.pants:
+            all_clothes_label = add_misscloth(all_clothes_label, data['vt_label'])
+
         if opt.dense:
             all_clothes_label = data['dense']
 
+        if opt.nocollar:
+            all_clothes_label = changeseg(data['dense'], all_clothes_label)
+
+        if opt.nobodyseg:
+            all_clothes_label = remove_bodyseg(all_clothes_label)
+
         ############## Forward Pass ######################
-        losses, fake_image, real_image, input_label,L1_loss,style_loss,clothes_mask,CE_loss,rgb,alpha= \
+        losses, fake_image, real_image, input_label,L1_loss,style_loss,clothes_mask,CE_loss,rgb,alpha, \
+        pre_clothes_mask, all_clothes_label, dis_label_G1_out, \
+        fake_cl, fake_cl_dis, \
+        fake_c_Uout, warped, \
+        img_hole_hand, dis_label, fake_c, \
+        arm_label_G1_out, mask_Uout = \
             model(Variable(data['label'].cuda()),
                   Variable(data['edge'].cuda()),
                   Variable(img_fore.cuda()),
@@ -187,11 +321,21 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         print('Couple is: ' + str(data['name']) + ' - ' + str(data['name_c']))
 
         ### display output images
-        a = generate_label_color(generate_label_plain(input_label)).float().cuda()
+        a = generate_label_color(generate_label_plain(all_clothes_label)).float().cuda()
         b = real_image.float().cuda()
         c = fake_image.float().cuda()
         d = torch.cat([clothes_mask,clothes_mask,clothes_mask],1)
         z = data['dense'].cuda()
+
+        print_array = [pre_clothes_mask, all_clothes_label, dis_label_G1_out,
+        fake_cl, fake_cl_dis,
+        fake_c_Uout, mask_Uout , warped,
+        img_hole_hand, dis_label, fake_c,
+                       arm_label_G1_out,
+                       mask_fore.cuda(), img_fore.cuda()]
+
+        ###  save_img(opt, 'outputs', print_array)
+        #print(asd)
 
         #combine = torch.cat([z[0],a[0],d[0],b[0],c[0],rgb[0]], 2).squeeze()
         combine = torch.cat([a[0], d[0], b[0], c[0], rgb[0]], 2).squeeze()
@@ -201,7 +345,7 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
             rgb = (cv_img * 255).astype(np.uint8)
             bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
             n = str(step) + '.jpg'
-            cv2.imwrite('sample_' + opt.name + '/'  + data['name'][0], bgr)
+            cv2.imwrite('sample_' + opt.name + '/' + data['name'][0], bgr)
 
         combine = fake_image[0].float().cuda()
         # combine=c[0].squeeze()
@@ -223,6 +367,7 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
             pass
         if epoch_iter >= dataset_size:
             break
+
        
     # end of epoch 
     iter_end_time = time.time()

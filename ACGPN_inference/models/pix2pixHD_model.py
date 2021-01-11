@@ -330,10 +330,13 @@ class Pix2PixHDModel(BaseModel):
         arm_label = self.G1.refine(G1_in)
 
         arm_label = self.sigmoid(arm_label)
+        arm_label_G1_out = arm_label
         CE_loss = self.cross_entropy2d(arm_label, (label * (1 - clothes_mask)).transpose(0, 1)[0].long()) * 10
 
         armlabel_map = generate_discrete_label(arm_label.detach(), 14, False)
         dis_label = generate_discrete_label(arm_label.detach(), 14)
+
+        dis_label_G1_out = dis_label
 
         if self.opt.clothlmg2:
             G2_in = torch.cat([pre_clothes_mask, cloth_rep, dis_label,pose,self.gen_noise(shape)], 1)
@@ -355,7 +358,7 @@ class Pix2PixHDModel(BaseModel):
         arm1_occ = clothes_mask * new_arm1_mask
         arm2_occ = clothes_mask * new_arm2_mask
         bigger_arm1_occ=morpho(arm1_occ,10)
-        bigger_arm2_occ=morpho(arm2_occ,10  )
+        bigger_arm2_occ=morpho(arm2_occ,10)
         arm1_full = arm1_occ + (1 - clothes_mask) * arm1_mask
         arm2_full = arm2_occ + (1 - clothes_mask) * arm2_mask
         armlabel_map *= (1 - new_arm1_mask)
@@ -366,9 +369,12 @@ class Pix2PixHDModel(BaseModel):
         dis_label=encode(armlabel_map,armlabel_map.shape)
 
         fake_c, warped, warped_mask,warped_grid= self.Unet(clothes, fake_cl_dis, pre_clothes_mask,grid, cloth_rep)
+
         mask=fake_c[:,3,:,:]
         mask=self.sigmoid(mask)*fake_cl_dis
         fake_c = self.tanh(fake_c[:,0:3,:,:])
+        fake_c_Uout = fake_c
+        mask_Uout = mask
         fake_c=fake_c*(1-mask)+mask*warped
         skin_color = self.ger_average_color((arm1_mask + arm2_mask - arm2_mask * arm1_mask),
                                             (arm1_mask + arm2_mask - arm2_mask * arm1_mask) * real_image)
@@ -404,7 +410,13 @@ class Pix2PixHDModel(BaseModel):
 
         return [self.loss_filter(loss_G_GAN, 0, loss_G_VGG, loss_D_real, loss_D_fake), fake_image,
                 clothes, arm_label
-            , L1_loss, style_loss, fake_cl, CE_loss,real_image,warped_grid]
+            , L1_loss, style_loss, fake_cl, CE_loss,real_image,warped_grid,
+
+                pre_clothes_mask, all_clothes_label, dis_label_G1_out,
+                fake_cl, fake_cl_dis,
+                fake_c_Uout, warped,
+                img_hole_hand, dis_label, fake_c,
+                arm_label_G1_out, mask_Uout]
 
     def inference(self, label, label_ref, image_ref):
 

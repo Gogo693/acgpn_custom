@@ -108,6 +108,7 @@ class Pix2PixHDModel(BaseModel):
         lm_dim = 0
         dense_dim = 0
         cloth_lm_dim = 0
+        densefull_dim = 0
 
         if self.opt.mesh:
             mesh_dim = 1
@@ -123,6 +124,9 @@ class Pix2PixHDModel(BaseModel):
         if self.opt.denseplus:
             dense_dim = 3
 
+        if self.opt.densefull:
+            densefull_dim = 3
+
         if self.opt.densestack:
             dense_dim = 6
 
@@ -137,11 +141,11 @@ class Pix2PixHDModel(BaseModel):
 
         if self.opt.transfer:
             with torch.no_grad():
-                self.G2 = networks.define_Refine(19 + 18 + cloth_lm_dim, 1, self.gpu_ids)
-                self.G = networks.define_Refine(24 + mesh_g_dim, 3, self.gpu_ids)
+                self.G2 = networks.define_Refine(19 + 18 + cloth_lm_dim+densefull_dim, 1, self.gpu_ids)
+                self.G = networks.define_Refine(24 + mesh_g_dim+densefull_dim, 3, self.gpu_ids)
         else:
-            self.G2 = networks.define_Refine(19+18 + cloth_lm_dim,1,self.gpu_ids)
-            self.G = networks.define_Refine(24 + mesh_g_dim,3,self.gpu_ids)
+            self.G2 = networks.define_Refine(19+18 + cloth_lm_dim+densefull_dim,1,self.gpu_ids)
+            self.G = networks.define_Refine(24 + mesh_g_dim+densefull_dim,3,self.gpu_ids)
 
         #ipdb.set_trace()
         self.tanh=nn.Tanh()
@@ -158,11 +162,11 @@ class Pix2PixHDModel(BaseModel):
 
             if self.opt.transfer:
                 with torch.no_grad():
-                    self.D2=self.get_D(20+18 + cloth_lm_dim,opt)
-                    self.D=self.get_D(27,opt)
+                    self.D2=self.get_D(20+18 + cloth_lm_dim+densefull_dim,opt)
+                    self.D=self.get_D(27+densefull_dim,opt)
             else:
-                self.D2 = self.get_D(20 + 18 + cloth_lm_dim, opt)
-                self.D = self.get_D(27, opt)
+                self.D2 = self.get_D(20 + 18 + cloth_lm_dim+densefull_dim, opt)
+                self.D = self.get_D(27+densefull_dim, opt)
 
             self. D3=self.get_D(7,opt)
             #self.netB = networks.define_B(netB_input_nc, opt.output_nc, 32, 3, 3, opt.norm, gpu_ids=self.gpu_ids)        
@@ -201,7 +205,7 @@ class Pix2PixHDModel(BaseModel):
             # define loss functions
             self.loss_filter = self.init_loss_filter(not opt.no_ganFeat_loss, not opt.no_vgg_loss)
             
-            self.criterionGAN = networks.GANLoss(use_lsgan=not opt.no_lsgan, tensor=self.Tensor)   
+            self.criterionGAN = networks.GANLoss(use_lsgan=not opt.no_lsgan, tensor=self.Tensor)
             self.criterionFeat = torch.nn.L1Loss()
             if not opt.no_vgg_loss:
                 self.criterionVGG = networks.VGGLoss(self.gpu_ids)
@@ -359,6 +363,8 @@ class Pix2PixHDModel(BaseModel):
 
         if self.opt.clothlmg2:
             G2_in=torch.cat([pre_clothes_mask,cloth_rep,masked_label,pose,self.gen_noise(shape)],1)
+        elif self.opt.densefull:
+            G2_in=torch.cat([pre_clothes_mask,cloth_rep,masked_label,pose, dense,self.gen_noise(shape)],1)
         else:
             G2_in = torch.cat([pre_clothes_mask, clothes, masked_label, pose, self.gen_noise(shape)], 1)
 
@@ -401,6 +407,8 @@ class Pix2PixHDModel(BaseModel):
 
         if self.opt.mesh_g:
             G_in = torch.cat([img_hole_hand,masked_label,real_image*clothes_mask,skin_color,self.gen_noise(shape), mesh],1)
+        elif self.opt.densefull:
+            G_in = torch.cat([img_hole_hand, dense, masked_label, real_image * clothes_mask, skin_color, self.gen_noise(shape)], 1)
         else:
             G_in = torch.cat([img_hole_hand, masked_label, real_image * clothes_mask, skin_color, self.gen_noise(shape)], 1)
 
@@ -471,7 +479,7 @@ class Pix2PixHDModel(BaseModel):
         # LM loss
         LM_loss = 0
         if self.opt.landmarks:
-            LM_loss = self.criterionLM(warped_cloth_lm, person_lm)
+            LM_loss = self.criterionLM(warped_cloth_lm, person_lm) * self.opt.lambda_flm
 
         loss_G_VGG += self.criterionVGG.warp(fake_c, real_image*clothes_mask) *20
         loss_G3 = loss_G_VGG
@@ -549,6 +557,17 @@ class Pix2PixHDModel(BaseModel):
     def update_learning_rate(self):
         lrd = self.opt.lr / self.opt.niter_decay
         lr = self.old_lr - lrd        
+        for param_group in self.optimizer_D.param_groups:
+            param_group['lr'] = lr
+        for param_group in self.optimizer_G.param_groups:
+            param_group['lr'] = lr
+        if self.opt.verbose:
+            print('update learning rate: %f -> %f' % (self.old_lr, lr))
+        self.old_lr = lr
+
+    def update_learning_rate_maskgen(self):
+        lrd = self.opt.lr / self.opt.niter_decay
+        lr = self.old_lr - lrd
         for param_group in self.optimizer_D.param_groups:
             param_group['lr'] = lr
         for param_group in self.optimizer_G.param_groups:

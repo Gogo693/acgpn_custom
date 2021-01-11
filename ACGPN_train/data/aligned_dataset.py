@@ -78,6 +78,12 @@ class AlignedDataset(BaseDataset):
             self.dir_A = os.path.join(opt.dataroot, opt.phase + dir_A)
             self.A_paths = sorted(make_dataset_test(self.dir_A))
 
+        ### input VS (VTON Segmentation)
+        if opt.isTrain or opt.use_encoded_image:
+            dir_VS = '_seg'
+            self.dir_VS = os.path.join(opt.dataroot, opt.phase + dir_VS)
+            self.VS_paths = sorted(make_dataset(self.dir_VS))
+            self.VSR_paths = make_dataset(self.dir_VS)
 
         ### input S (Mesh Shape)
         if opt.isTrain or opt.use_encoded_image:
@@ -220,6 +226,13 @@ class AlignedDataset(BaseDataset):
             one_map = transform_B(one_map.convert('RGB'))
             pose_map[i] = one_map[0]
         P_tensor=pose_map
+
+        ## VTON Segmentation
+        VS_path = self.VS_paths[test]
+        VS = Image.open(VS_path)  # .convert('L')
+        VS_tensor = transform_A(VS) * 255.0
+        # VS_tensor = np.array(VS)
+        # VS_tensor = torch.from_numpy(VS)
 
         ## Mesh
         S_path = self.S_paths[test]
@@ -392,7 +405,8 @@ class AlignedDataset(BaseDataset):
                            'dense': D_tensor,
                            'cloth_lm': CLM_tensor,
                            'person_lm': PLM_tensor,
-                           'cloth_representation': cloth_rep
+                           'cloth_representation': cloth_rep,
+                           'vt_label': VS_tensor
                           }
         else:
             input_dict = {'label': A_tensor,

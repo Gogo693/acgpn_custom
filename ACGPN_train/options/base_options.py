@@ -56,6 +56,8 @@ class BaseOptions():
         self.parser.add_argument('--mesh', action='store_true', help='Use mesh input')
         self.parser.add_argument('--clothrep', action='store_true', help='Use cloth_rep input')
         self.parser.add_argument('--landmarks', action='store_true', help='Use landmarks')
+        self.parser.add_argument('--lambda_flm', type=int, default=1, help='Hyperparam for flm')
+
         self.parser.add_argument('--mesh_g', action='store_true',
                                  help='if true, use mesh in last generator')
 
@@ -79,6 +81,18 @@ class BaseOptions():
                                  help='if true, freeze G2 and G')
 
         self.parser.add_argument('--clothlmg2', action='store_true',
+                                 help='if true, freeze G2 and G')
+
+        self.parser.add_argument('--nocollar', action='store_true',
+                                 help='if true, freeze G2 and G')
+
+        self.parser.add_argument('--pants', action='store_true',
+                                 help='if true, freeze G2 and G')
+
+        self.parser.add_argument('--nobodyseg', action='store_true',
+                                 help='if true, freeze G2 and G')
+
+        self.parser.add_argument('--densefull', action='store_true',
                                  help='if true, freeze G2 and G')
 
         self.initialized = True
