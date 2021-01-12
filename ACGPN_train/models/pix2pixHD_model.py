@@ -353,9 +353,6 @@ class Pix2PixHDModel(BaseModel):
 
         arm_label=self.G1.refine(G1_in)
         arm_label=self.sigmoid(arm_label)
-        print('loss_g1')
-        print(arm_label.shape)
-        print(((label * (1 - clothes_mask)).transpose(0, 1)[0].long()).shape)
         loss_G1 = self.cross_entropy2d(arm_label, (label * (1 - clothes_mask)).transpose(0, 1)[0].long())*10
         CE_loss = 0
         CE_loss += loss_G1
@@ -375,9 +372,6 @@ class Pix2PixHDModel(BaseModel):
         fake_cl=self.sigmoid(fake_cl)
 
         if not self.opt.transfer:
-            print('loss_g2')
-            print(fake_cl.shape)
-            print(clothes_mask.shape)
             loss_G2 = self.BCE(fake_cl, clothes_mask)*10
             CE_loss += loss_G2
         
@@ -504,8 +498,6 @@ class Pix2PixHDModel(BaseModel):
         loss_G3 += L1_loss
 
         if not self.opt.transfer:
-            print('g3')
-            print(fake_image.shape, real_image.shape)
             loss_L1_G4 = self.criterionFeat(fake_image , real_image )
             L1_loss += loss_L1_G4
             loss_G4 += loss_L1_G4
