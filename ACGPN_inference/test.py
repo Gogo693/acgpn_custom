@@ -165,7 +165,7 @@ def add_misscloth(ac_label, vt_label):
 
 def remove_bodyseg(seg):
     label = seg
-    body = torch.FloatTensor((data['label'].cpu().numpy() == 4).astype(np.int))
+    body = torch.FloatTensor((seg.cpu().numpy() == 4).astype(np.int))
 
     label = label - body * 4
     return label
@@ -326,6 +326,7 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         c = fake_image.float().cuda()
         d = torch.cat([clothes_mask,clothes_mask,clothes_mask],1)
         z = data['dense'].cuda()
+        y = generate_label_color(generate_label_plain(arm_label_G1_out)).float().cuda()
 
         print_array = [pre_clothes_mask, all_clothes_label, dis_label_G1_out,
         fake_cl, fake_cl_dis,
@@ -338,7 +339,7 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         #print(asd)
 
         #combine = torch.cat([z[0],a[0],d[0],b[0],c[0],rgb[0]], 2).squeeze()
-        combine = torch.cat([a[0], d[0], b[0], c[0], rgb[0]], 2).squeeze()
+        combine = torch.cat([a[0], y[0], d[0], b[0], c[0], rgb[0]], 2).squeeze()
         cv_img = (combine.permute(1, 2, 0).detach().cpu().numpy() + 1) / 2
         if step % 1 == 0:
             # writer.add_image('combine', (combine.data + 1) / 2.0, step)
