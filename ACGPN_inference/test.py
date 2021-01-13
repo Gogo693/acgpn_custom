@@ -328,7 +328,7 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         z = data['dense'].float().cuda()
         y = generate_label_color(generate_label_plain(arm_label_G1_out)).float().cuda()
         x = img_hole_hand.float().cuda()
-        l = torch.cat([fake_c,fake_c,fake_c],1)
+        l = fake_c.float().cuda()
         m = generate_label_color(generate_label_plain(dis_label)).float().cuda()
 
         print_array = [pre_clothes_mask, all_clothes_label, dis_label_G1_out,
