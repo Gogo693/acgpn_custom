@@ -159,7 +159,7 @@ def add_misscloth(ac_label, vt_label):
     #label = label + pants_1 * 8
     #label = label + pants_2 * 8
     #label = label + pants_3 * 8
-    label = label * (1 - pants_miss) + pants_miss * 8
+    label = label * (1 - pants_miss) + pants_miss * 8 * 255
 
     return label
 
