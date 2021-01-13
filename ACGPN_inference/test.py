@@ -342,7 +342,7 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         #print(asd)
 
         #combine = torch.cat([z[0],a[0],d[0],b[0],c[0],rgb[0]], 2).squeeze()
-        combine = torch.cat(z[0], [a[0], y[0], x[0], l[0], m[0], d[0], b[0], c[0], rgb[0]], 2).squeeze()
+        combine = torch.cat([z[0], a[0], y[0], x[0], l[0], m[0], d[0], b[0], c[0], rgb[0]], 2).squeeze()
         cv_img = (combine.permute(1, 2, 0).detach().cpu().numpy() + 1) / 2
         if step % 1 == 0:
             # writer.add_image('combine', (combine.data + 1) / 2.0, step)
