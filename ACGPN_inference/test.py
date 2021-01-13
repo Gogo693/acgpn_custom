@@ -240,7 +240,8 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         #
         # data['label'] = data['label'] * (1 - t_mask) + t_mask * 4
         mask_clothes = torch.FloatTensor((data['label'].cpu().numpy() == 4).astype(np.int))
-        mask_fore = torch.FloatTensor((data['label'].cpu().numpy() > 0).astype(np.int))
+        label = add_misscloth(label, data['vt_label'])
+        mask_fore = torch.FloatTensor((label.cpu().numpy() > 0).astype(np.int))
         img_fore = data['image'] * mask_fore
         img_fore_wc = img_fore * mask_fore
         all_clothes_label = changearm(data['label'])
@@ -331,6 +332,7 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         l = fake_c.float().cuda()
         m = generate_label_color(generate_label_plain(dis_label)).float().cuda()
         n = torch.cat([fake_cl_dis, fake_cl_dis, fake_cl_dis], 1)
+        o = warped.float().cuda()
 
         print_array = [pre_clothes_mask, all_clothes_label, dis_label_G1_out,
         fake_cl, fake_cl_dis,
@@ -343,7 +345,7 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         #print(asd)
 
         #combine = torch.cat([z[0],a[0],d[0],b[0],c[0],rgb[0]], 2).squeeze()
-        combine = torch.cat([z[0], a[0], y[0], x[0], l[0], m[0], d[0], n[0], b[0], c[0], rgb[0]], 2).squeeze()
+        combine = torch.cat([z[0], a[0], y[0], x[0], o[0], l[0], m[0], d[0], n[0], b[0], c[0], rgb[0]], 2).squeeze()
         cv_img = (combine.permute(1, 2, 0).detach().cpu().numpy() + 1) / 2
         if step % 1 == 0:
             # writer.add_image('combine', (combine.data + 1) / 2.0, step)
