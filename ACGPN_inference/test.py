@@ -328,6 +328,8 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         z = data['dense'].cuda()
         y = generate_label_color(generate_label_plain(arm_label_G1_out)).float().cuda()
         x = img_hole_hand.float().cuda()
+        l = torch.cat([fake_c,fake_c,fake_c],1)
+        m = generate_label_color(generate_label_plain(dis_label)).float().cuda()
 
         print_array = [pre_clothes_mask, all_clothes_label, dis_label_G1_out,
         fake_cl, fake_cl_dis,
@@ -340,7 +342,7 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         #print(asd)
 
         #combine = torch.cat([z[0],a[0],d[0],b[0],c[0],rgb[0]], 2).squeeze()
-        combine = torch.cat([a[0], y[0], x[0], d[0], b[0], c[0], rgb[0]], 2).squeeze()
+        combine = torch.cat([a[0], y[0], x[0], l[0], m[0], d[0], b[0], c[0], rgb[0]], 2).squeeze()
         cv_img = (combine.permute(1, 2, 0).detach().cpu().numpy() + 1) / 2
         if step % 1 == 0:
             # writer.add_image('combine', (combine.data + 1) / 2.0, step)

@@ -214,7 +214,7 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
             ############## Forward Pass ######################
             losses, fake_image, real_image,input_label,L1_loss,style_loss,LM_loss,clothes_mask,warped,refined,CE_loss,rx,ry,cx,cy,rg,cg, \
             loss_G1, loss_G2, loss_G3, loss_G4, loss_D_real_pool, loss_D_fake_pool = \
-                model(Variable(data['label'].cuda()),
+                model(Variable(add_misscloth(data['label'], data['vt_label']).cuda()),
                       Variable(data['edge'].cuda()),
                       Variable(img_fore.cuda()),
                       Variable(mask_clothes.cuda()),
