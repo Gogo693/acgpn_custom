@@ -133,18 +133,22 @@ class Pix2PixHDModel(BaseModel):
         if self.opt.clothlmg2:
             cloth_lm_dim = 6
 
+        pose_dim = 18
+        if self.opt.noopenpose:
+            pose_dim = 0
+
     
         self.Unet=networks.define_UnetMask(self.opt, 4,self.gpu_ids)
         ## self.Unet = networks.define_UnetMask(4, self.gpu_ids)
-        self.G1 = networks.define_Refine(37 + mesh_dim + dense_dim,14,self.gpu_ids)
+        self.G1 = networks.define_Refine(19 + pose_dim + + mesh_dim + dense_dim,14,self.gpu_ids)
         #self.G1 = networks.define_Refine(37, 14, self.gpu_ids)
 
         if self.opt.transfer:
             with torch.no_grad():
-                self.G2 = networks.define_Refine(19 + 18 + cloth_lm_dim+densefull_dim, 1, self.gpu_ids)
+                self.G2 = networks.define_Refine(19 + pose_dim + cloth_lm_dim+dense_dim, 1, self.gpu_ids)
                 self.G = networks.define_Refine(24 + mesh_g_dim+densefull_dim, 3, self.gpu_ids)
         else:
-            self.G2 = networks.define_Refine(19+18 + cloth_lm_dim+densefull_dim,1,self.gpu_ids)
+            self.G2 = networks.define_Refine(19+ pose_dim + cloth_lm_dim+dense_dim,1,self.gpu_ids)
             self.G = networks.define_Refine(24 + mesh_g_dim+densefull_dim,3,self.gpu_ids)
 
         #ipdb.set_trace()
@@ -157,15 +161,15 @@ class Pix2PixHDModel(BaseModel):
             use_sigmoid = opt.no_lsgan
             netD_input_nc = input_nc + opt.output_nc
             netB_input_nc = opt.output_nc * 2
-            self.D1=self.get_D(34+14+3+mesh_dim+dense_dim,opt)
+            self.D1=self.get_D(16 + pose_dim + 3 + 14 + mesh_dim + dense_dim,opt)
             ##self.D1 = self.get_D(34 + 14 + 3, opt)
 
             if self.opt.transfer:
                 with torch.no_grad():
-                    self.D2=self.get_D(20+18 + cloth_lm_dim+densefull_dim,opt)
+                    self.D2=self.get_D(20+pose_dim + cloth_lm_dim+dense_dim,opt)
                     self.D=self.get_D(27+densefull_dim,opt)
             else:
-                self.D2 = self.get_D(20 + 18 + cloth_lm_dim+densefull_dim, opt)
+                self.D2 = self.get_D(20 + pose_dim + cloth_lm_dim+dense_dim, opt)
                 self.D = self.get_D(27+densefull_dim, opt)
 
             self. D3=self.get_D(7,opt)
@@ -350,6 +354,9 @@ class Pix2PixHDModel(BaseModel):
         if self.opt.denseplus or self.opt.densestack:
             G1_in = torch.cat([pre_clothes_mask, clothes, all_clothes_label, dense, pose, self.gen_noise(shape)], dim=1)
 
+        if self.opt.noopenpose:
+            G1_in = torch.cat([pre_clothes_mask, clothes, all_clothes_label, dense, self.gen_noise(shape)], dim=1)
+
 
         arm_label=self.G1.refine(G1_in)
         arm_label=self.sigmoid(arm_label)
@@ -367,6 +374,10 @@ class Pix2PixHDModel(BaseModel):
             G2_in=torch.cat([pre_clothes_mask,cloth_rep,masked_label,pose, dense,self.gen_noise(shape)],1)
         else:
             G2_in = torch.cat([pre_clothes_mask, clothes, masked_label, pose, self.gen_noise(shape)], 1)
+
+        if self.opt.noopenpose:
+            G2_in = torch.cat([pre_clothes_mask, clothes, masked_label, dense, self.gen_noise(shape)], 1)
+
 
         fake_cl=self.G2.refine(G2_in)
         fake_cl=self.sigmoid(fake_cl)

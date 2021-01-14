@@ -149,6 +149,8 @@ def changearm(old_label):
 
 def add_misscloth(ac_label, vt_label):
     label = ac_label
+    print(torch.max(label))
+    print(torch.min(label))
     #print(type(vt_label))
     #pants_1 = torch.FloatTensor((vt_label.cpu().numpy() == 8).astype(np.int))
     #pants_2 = torch.FloatTensor((vt_label.cpu().numpy() == 9).astype(np.int))
@@ -156,10 +158,13 @@ def add_misscloth(ac_label, vt_label):
     pants_miss = torch.FloatTensor((vt_label.cpu().numpy() == 12).astype(np.int))
     ##pants_miss = torch.FloatTensor((vt_label.numpy() == 12).astype(np.float32))
 
+    print(torch.max(pants_miss))
+    print(torch.min(pants_miss))
+
     #label = label + pants_1 * 8
     #label = label + pants_2 * 8
     #label = label + pants_3 * 8
-    label = label * (1 - pants_miss) + pants_miss * 8 * 255
+    label = label * (1 - pants_miss) + pants_miss * 8
 
     return label
 

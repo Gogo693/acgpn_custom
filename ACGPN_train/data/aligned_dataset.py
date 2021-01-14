@@ -230,9 +230,9 @@ class AlignedDataset(BaseDataset):
         ## VTON Segmentation
         VS_path = self.VS_paths[test]
         VS = Image.open(VS_path)  # .convert('L')
-        #VS_tensor = transform_A(VS) * 255.0
-        VS_tensor = np.array(VS)
-        VS_tensor = torch.from_numpy(VS)
+        VS_tensor = transform_A(VS) * 255.0
+        # VS_tensor = np.array(VS)
+        # VS_tensor = torch.from_numpy(VS)
 
         ## Mesh
         S_path = self.S_paths[test]
