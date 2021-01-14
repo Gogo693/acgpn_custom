@@ -370,7 +370,7 @@ class Pix2PixHDModel(BaseModel):
 
         if self.opt.clothlmg2:
             G2_in=torch.cat([pre_clothes_mask,cloth_rep,masked_label,pose,self.gen_noise(shape)],1)
-        elif self.opt.densefull:
+        elif self.opt.denseplus:
             G2_in=torch.cat([pre_clothes_mask,cloth_rep,masked_label,pose, dense,self.gen_noise(shape)],1)
         else:
             G2_in = torch.cat([pre_clothes_mask, clothes, masked_label, pose, self.gen_noise(shape)], 1)
