@@ -231,7 +231,7 @@ class AlignedDataset(BaseDataset):
         VS = Image.open(VS_path)#.convert('L')
         #VS_tensor = transform_A(VS) * 255.0
         VS_tensor = np.array(VS)
-        VS_tensor = torch.from_numpy(VS_tensor) * 255.0
+        VS_tensor = torch.from_numpy(VS_tensor)# * 255.0
 
         ## Mesh
         S_path = self.S_paths[test]

@@ -149,17 +149,14 @@ def changearm(old_label):
 
 def add_misscloth(ac_label, vt_label):
     label = ac_label
-    print(torch.max(label))
-    print(torch.min(label))
+
     #print(type(vt_label))
+
     #pants_1 = torch.FloatTensor((vt_label.cpu().numpy() == 8).astype(np.int))
     #pants_2 = torch.FloatTensor((vt_label.cpu().numpy() == 9).astype(np.int))
     #pants_3 = torch.FloatTensor((vt_label.cpu().numpy() == 10).astype(np.int))
     pants_miss = torch.FloatTensor((vt_label.cpu().numpy() == 12).astype(np.int))
     ##pants_miss = torch.FloatTensor((vt_label.numpy() == 12).astype(np.float32))
-
-    print(torch.max(pants_miss))
-    print(torch.min(pants_miss))
 
     #label = label + pants_1 * 8
     #label = label + pants_2 * 8
@@ -245,14 +242,17 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         #
         # data['label'] = data['label'] * (1 - t_mask) + t_mask * 4
         mask_clothes = torch.FloatTensor((data['label'].cpu().numpy() == 4).astype(np.int))
+        #if opt.pants:
         label = add_misscloth(data['label'], data['vt_label'])
+        #else:
+        #    label = data['label']
         mask_fore = torch.FloatTensor((label.cpu().numpy() > 0).astype(np.int))
         img_fore = data['image'] * mask_fore
         img_fore_wc = img_fore * mask_fore
         all_clothes_label = changearm(data['label'])
 
-        if opt.pants:
-            all_clothes_label = add_misscloth(all_clothes_label, data['vt_label'])
+        #if opt.pants:
+        all_clothes_label = add_misscloth(all_clothes_label, data['vt_label'])
 
         if opt.dense:
             all_clothes_label = data['dense']
@@ -270,7 +270,7 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         fake_c_Uout, warped, \
         img_hole_hand, dis_label, fake_c, \
         arm_label_G1_out, mask_Uout = \
-            model(Variable(add_misscloth(data['label'], data['vt_label']).cuda()),
+            model(Variable(label.cuda()),
                   Variable(data['edge'].cuda()),
                   Variable(img_fore.cuda()),
                   Variable(mask_clothes.cuda()),

@@ -168,10 +168,14 @@ class Pix2PixHDModel(BaseModel):
         if self.opt.clothlmg2:
             cloth_lm_dim = 6
 
+        pose_dim = 18
+        if self.opt.noopenpose:
+            pose_dim = 0
+
         with torch.no_grad():
             self.Unet = networks.define_UnetMask(self.opt, 4, self.gpu_ids).eval()
-            self.G1 = networks.define_Refine(37 + mesh_dim + dense_dim, 14, self.gpu_ids).eval()
-            self.G2 = networks.define_Refine(19+18 + cloth_lm_dim, 1, self.gpu_ids).eval()
+            self.G1 = networks.define_Refine(19 + pose_dim + mesh_dim + dense_dim, 14, self.gpu_ids).eval()
+            self.G2 = networks.define_Refine(19+pose_dim + dense_dim + cloth_lm_dim, 1, self.gpu_ids).eval()
             self.G = networks.define_Refine(24 + mesh_g_dim, 3, self.gpu_ids).eval()
 
         self.tanh = nn.Tanh()
@@ -382,9 +386,9 @@ class Pix2PixHDModel(BaseModel):
         skin_color = self.ger_average_color((arm1_mask + arm2_mask - arm2_mask * arm1_mask),
                                             (arm1_mask + arm2_mask - arm2_mask * arm1_mask) * real_image)
         occlude = (1 - bigger_arm1_occ * (arm2_mask + arm1_mask+clothes_mask)) * (1 - bigger_arm2_occ * (arm2_mask + arm1_mask+clothes_mask))
-        if not self.opt.nobodyseg:
-            pants_mask = torch.FloatTensor((label.cpu().numpy() == 8).astype(np.float)).cuda()
-            img_hole_hand = img_fore * (1 - clothes_mask) * (1 - fake_cl_dis) * (1 - pants_mask)
+        if self.opt.nobodyseg:
+            #pants_mask = torch.FloatTensor((label.cpu().numpy() == 8).astype(np.float)).cuda()
+            img_hole_hand = img_fore * (1 - clothes_mask) * (1 - fake_cl_dis) #* (1 - pants_mask)
         else:
             img_hole_hand = img_fore * (1 - clothes_mask) * occlude * (1 - fake_cl_dis)
 

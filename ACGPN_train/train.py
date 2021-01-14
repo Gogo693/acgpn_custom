@@ -176,6 +176,10 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         t_mask=torch.FloatTensor((data['label'].cpu().numpy()==7).astype(np.float))
         data['label']=data['label']*(1-t_mask)+t_mask*4
         mask_clothes=torch.FloatTensor((data['label'].cpu().numpy()==4).astype(np.int))
+        # if opt.pants:
+        label = add_misscloth(data['label'], data['vt_label'])
+        # else:
+        #    label = data['label']
         mask_fore=torch.FloatTensor((data['label'].cpu().numpy()>0).astype(np.int))
         img_fore=data['image']*mask_fore
         img_fore_wc=img_fore*mask_fore
