@@ -130,26 +130,46 @@ class Pix2PixHDModel(BaseModel):
         if self.opt.densestack:
             dense_dim = 6
 
-        if self.opt.clothlmg2:
+        if self.opt.clothlmg2 or self.opt.denseplus:
             cloth_lm_dim = 6
 
         pose_dim = 18
         if self.opt.noopenpose:
             pose_dim = 0
 
+        if self.opt.neck:
+            human_dim = 20
+        else:
+            human_dim = 19
+
     
         self.Unet=networks.define_UnetMask(self.opt, 4,self.gpu_ids)
         ## self.Unet = networks.define_UnetMask(4, self.gpu_ids)
-        self.G1 = networks.define_Refine(19 + pose_dim + mesh_dim + dense_dim,14,self.gpu_ids)
+
         #self.G1 = networks.define_Refine(37, 14, self.gpu_ids)
+
+        if self.opt.neck:
+            self.G1 = networks.define_Refine(human_dim + pose_dim + mesh_dim + dense_dim, 15, self.gpu_ids)
+        else:
+            self.G1 = networks.define_Refine(human_dim + pose_dim + mesh_dim + dense_dim, 14, self.gpu_ids)
+
 
         if self.opt.transfer:
             with torch.no_grad():
-                self.G2 = networks.define_Refine(19 + pose_dim + cloth_lm_dim+dense_dim, 1, self.gpu_ids)
-                self.G = networks.define_Refine(24 + mesh_g_dim+densefull_dim, 3, self.gpu_ids)
+                self.G2 = networks.define_Refine(human_dim + pose_dim + cloth_lm_dim+dense_dim, 1, self.gpu_ids)
+
+                if self.opt.neck:
+                    self.G = networks.define_Refine(25 + mesh_g_dim+densefull_dim, 3, self.gpu_ids)
+                else:
+                    self.G = networks.define_Refine(24 + mesh_g_dim+densefull_dim, 3, self.gpu_ids)
+
         else:
-            self.G2 = networks.define_Refine(19 + pose_dim + cloth_lm_dim+dense_dim,1,self.gpu_ids)
-            self.G = networks.define_Refine(24 + mesh_g_dim+densefull_dim,3,self.gpu_ids)
+            self.G2 = networks.define_Refine(human_dim + pose_dim + cloth_lm_dim+dense_dim,1,self.gpu_ids)
+            if self.opt.neck:
+                self.G = networks.define_Refine(25 + mesh_g_dim+densefull_dim,3,self.gpu_ids)
+            else:
+                self.G = networks.define_Refine(24 + mesh_g_dim+densefull_dim,3,self.gpu_ids)
+
 
         #ipdb.set_trace()
         self.tanh=nn.Tanh()
@@ -161,16 +181,26 @@ class Pix2PixHDModel(BaseModel):
             use_sigmoid = opt.no_lsgan
             netD_input_nc = input_nc + opt.output_nc
             netB_input_nc = opt.output_nc * 2
-            self.D1=self.get_D(16 + pose_dim + 3 + 14 + mesh_dim + dense_dim,opt)
+            if self.opt.neck:
+                self.D1=self.get_D(16 + pose_dim + 3 + 15 + mesh_dim + dense_dim,opt)
+            else:
+                self.D1=self.get_D(16 + pose_dim + 3 + 14 + mesh_dim + dense_dim,opt)
+
             ##self.D1 = self.get_D(34 + 14 + 3, opt)
 
             if self.opt.transfer:
                 with torch.no_grad():
-                    self.D2=self.get_D(20+pose_dim + cloth_lm_dim+dense_dim,opt)
-                    self.D=self.get_D(27+densefull_dim,opt)
+                    self.D2=self.get_D(human_dim + 1 +pose_dim + cloth_lm_dim+dense_dim,opt)
+                    if self.opt.neck:
+                        self.D=self.get_D(28+densefull_dim,opt)
+                    else:
+                        self.D=self.get_D(27+densefull_dim,opt)
             else:
-                self.D2 = self.get_D(20 + pose_dim + cloth_lm_dim+dense_dim, opt)
-                self.D = self.get_D(27+densefull_dim, opt)
+                self.D2 = self.get_D(human_dim + 1 + pose_dim + cloth_lm_dim+dense_dim, opt)
+                if self.opt.neck:
+                    self.D = self.get_D(28+densefull_dim, opt)
+                else:
+                    self.D = self.get_D(27 + densefull_dim, opt)
 
             self. D3=self.get_D(7,opt)
             #self.netB = networks.define_B(netB_input_nc, opt.output_nc, 32, 3, 3, opt.norm, gpu_ids=self.gpu_ids)        
@@ -267,7 +297,10 @@ class Pix2PixHDModel(BaseModel):
     
     def encode_input(self,label_map, clothes_mask,all_clothes_label):
         size = label_map.size()
-        oneHot_size = (size[0], 14, size[2], size[3])
+        if self.opt.neck:
+            oneHot_size = (size[0], 15, size[2], size[3])
+        else:
+            oneHot_size = (size[0], 14, size[2], size[3])
         input_label = torch.cuda.FloatTensor(torch.Size(oneHot_size)).zero_()
         input_label = input_label.scatter_(1, label_map.data.long().cuda(), 1.0)
 
@@ -365,8 +398,12 @@ class Pix2PixHDModel(BaseModel):
         CE_loss += loss_G1
 
 
-        armlabel_map=generate_discrete_label(arm_label.detach(),14,False)
-        dis_label=generate_discrete_label(arm_label.detach(),14)
+        if self.opt.neck:
+            armlabel_map=generate_discrete_label(arm_label.detach(),15,False)
+            dis_label=generate_discrete_label(arm_label.detach(),15)
+        else:
+            armlabel_map=generate_discrete_label(arm_label.detach(),14,False)
+            dis_label=generate_discrete_label(arm_label.detach(),14)
 
         if self.opt.clothlmg2:
             G2_in=torch.cat([pre_clothes_mask,cloth_rep,masked_label,pose,self.gen_noise(shape)],1)
@@ -413,7 +450,13 @@ class Pix2PixHDModel(BaseModel):
 
         skin_color=self.ger_average_color((arm1_mask+arm2_mask-arm2_mask*arm1_mask),(arm1_mask+arm2_mask-arm2_mask*arm1_mask)*real_image)
 
-        img_hole_hand=img_fore*(1-clothes_mask)*(1-arm1_mask)*(1-arm2_mask)+img_fore*arm1_mask*(1-mask)+img_fore*arm2_mask*(1-mask)
+        if self.opt.neck:
+            neck = torch.FloatTensor((armlabel_map.cpu().numpy()==14).astype(np.float)).cuda()
+            img_hole_hand = img_fore * (1 - clothes_mask) * (1 - arm1_mask) * (1 - arm2_mask) + img_fore * arm1_mask * \
+                            (1 - mask) + img_fore * arm2_mask * (1 - mask) + img_fore * neck * (1 - mask)
+        else:
+            img_hole_hand = img_fore * (1 - clothes_mask) * (1 - arm1_mask) * (1 - arm2_mask) + img_fore * arm1_mask * \
+                            (1 - mask) + img_fore * arm2_mask * (1 - mask)
 
 
         if self.opt.mesh_g:

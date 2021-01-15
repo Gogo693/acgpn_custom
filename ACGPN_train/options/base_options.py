@@ -98,6 +98,9 @@ class BaseOptions():
         self.parser.add_argument('--noopenpose', action='store_true',
                                  help='if true, freeze G2 and G')
 
+        self.parser.add_argument('--neck', action='store_true',
+                                 help='if true, freeze G2 and G')
+
         self.initialized = True
 
     def parse(self, save=True):

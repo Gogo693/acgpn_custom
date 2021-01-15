@@ -112,6 +112,21 @@ def add_misscloth(ac_label, vt_label):
 
     return label
 
+def add_neck(ac_label, dense):
+    new_label = ac_label
+    seg_head = torch.FloatTensor((ac_label.cpu().numpy() == 1).astype(np.int)) \
+               + torch.FloatTensor((ac_label.cpu().numpy() == 12).astype(np.int))
+
+    dense_head = dense.numpy()
+    dense_head = np.copy(dense_head[:,:,2])
+    dense_head = torch.FloatTensor((ac_label.cpu().numpy() == 23).astype(np.int)) \
+                 + torch.FloatTensor((ac_label.cpu().numpy() == 24).astype(np.int))
+
+    neck = dense_head - (seg_head * dense_head)
+    new_label = new_label * (1 - neck) + neck * 14
+
+    return new_label
+
 def remove_bodyseg(seg):
     label = seg
     body = torch.FloatTensor((seg.cpu().numpy() == 4).astype(np.int))
@@ -196,6 +211,9 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
 
         if opt.nobodyseg:
             all_clothes_label = remove_bodyseg(all_clothes_label)
+
+        if opt.neck:
+            label = add_neck(label, data['dense'])
 
         '''
         print(Variable(data['label']).shape)
