@@ -214,6 +214,8 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
 
         if opt.neck:
             label = add_neck(label, data['dense'])
+            NC = 15
+
 
         '''
         print(Variable(data['label']).shape)
@@ -325,6 +327,7 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         
         ### display output images
         if step % 1000 == 0:
+            print(input_label.shape)
             a = generate_label_color(generate_label_plain(input_label)).float().cuda()
             b = real_image.float().cuda()
             c = fake_image.float().cuda()

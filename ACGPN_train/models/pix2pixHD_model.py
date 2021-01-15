@@ -182,7 +182,7 @@ class Pix2PixHDModel(BaseModel):
             netD_input_nc = input_nc + opt.output_nc
             netB_input_nc = opt.output_nc * 2
             if self.opt.neck:
-                self.D1=self.get_D(16 + pose_dim + 3 + 15 + mesh_dim + dense_dim,opt)
+                self.D1=self.get_D(17 + pose_dim + 3 + 15 + mesh_dim + dense_dim,opt)
             else:
                 self.D1=self.get_D(16 + pose_dim + 3 + 14 + mesh_dim + dense_dim,opt)
 
@@ -413,7 +413,7 @@ class Pix2PixHDModel(BaseModel):
             G2_in = torch.cat([pre_clothes_mask, clothes, masked_label, pose, self.gen_noise(shape)], 1)
 
         if self.opt.noopenpose:
-            G2_in = torch.cat([pre_clothes_mask, clothes, masked_label, dense, self.gen_noise(shape)], 1)
+            G2_in = torch.cat([pre_clothes_mask, cloth_rep, masked_label, dense, self.gen_noise(shape)], 1)
 
 
         fake_cl=self.G2.refine(G2_in)
