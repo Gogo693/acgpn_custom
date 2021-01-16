@@ -342,8 +342,8 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
             f=refined
             z = torch.cat([all_clothes_label, all_clothes_label, all_clothes_label],1).cuda()
             #z = generate_label_color(generate_label_plain(all_clothes_label)).float().cuda()
-            combine = torch.cat([l[0], a[0],b[0],c[0],d[0],e[0], z[0]], 2).squeeze()
-            #combine = torch.cat([a[0], b[0], c[0], d[0], e[0], f[0]], 2).squeeze()
+            #combine = torch.cat([l[0], a[0],b[0],c[0],d[0],e[0], z[0]], 2).squeeze()
+            combine = torch.cat([a[0], b[0], c[0], d[0], e[0], f[0]], 2).squeeze()
             cv_img=(combine.permute(1,2,0).detach().cpu().numpy()+1)/2
             writer.add_image('combine', (combine.data + 1) / 2.0, step)
             rgb=(cv_img*255).astype(np.uint8)
