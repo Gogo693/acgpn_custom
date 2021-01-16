@@ -165,7 +165,7 @@ class Pix2PixHDModel(BaseModel):
         if self.opt.densestack:
             dense_dim = 6
 
-        if self.opt.clothlmg2 or self.opt.denseplus:
+        if self.opt.clothlmg2:# or self.opt.denseplus:
             cloth_lm_dim = 6
 
         pose_dim = 18
@@ -350,7 +350,7 @@ class Pix2PixHDModel(BaseModel):
             G2_in = torch.cat([pre_clothes_mask, clothes, dis_label,pose,self.gen_noise(shape)], 1)
 
         if self.opt.noopenpose:
-            G2_in = torch.cat([pre_clothes_mask, cloth_rep, masked_label, dense, self.gen_noise(shape)], 1)
+            G2_in = torch.cat([pre_clothes_mask, clothes, masked_label, dense, self.gen_noise(shape)], 1)
 
 
         fake_cl = self.G2.refine(G2_in)
