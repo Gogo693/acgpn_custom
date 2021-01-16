@@ -206,8 +206,8 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         img_fore_wc=img_fore*mask_fore
         all_clothes_label=changearm(data['label'])
 
-        if opt.pants:
-            all_clothes_label = add_misscloth(all_clothes_label, data['vt_label'])
+        #if opt.pants:
+        all_clothes_label = add_misscloth(all_clothes_label, data['vt_label'])
 
         if opt.dense:
             all_clothes_label = data['dense']
