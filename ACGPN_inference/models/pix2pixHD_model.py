@@ -363,8 +363,8 @@ class Pix2PixHDModel(BaseModel):
         new_arm1_mask = torch.FloatTensor((armlabel_map.cpu().numpy() == 11).astype(np.float)).cuda()
         new_arm2_mask = torch.FloatTensor((armlabel_map.cpu().numpy() == 13).astype(np.float)).cuda()
         fake_cl_dis=fake_cl_dis*(1- new_arm1_mask)*(1-new_arm2_mask)
-        if not self.opt.nobodyseg:
-            fake_cl_dis*=mask_fore
+        #if not self.opt.nobodyseg:
+        fake_cl_dis*=mask_fore
 
         arm1_occ = clothes_mask * new_arm1_mask
         arm2_occ = clothes_mask * new_arm2_mask
@@ -373,12 +373,13 @@ class Pix2PixHDModel(BaseModel):
         arm1_full = arm1_occ + (1 - clothes_mask) * arm1_mask
         arm2_full = arm2_occ + (1 - clothes_mask) * arm2_mask
 
-        if not self.opt.nobodyseg:
-            armlabel_map *= (1 - new_arm1_mask)
-            armlabel_map *= (1 - new_arm2_mask)
-            armlabel_map = armlabel_map * (1 - arm1_full) + arm1_full * 11
-            armlabel_map = armlabel_map * (1 - arm2_full) + arm2_full * 13
-            armlabel_map*=(1-fake_cl_dis)
+        #if not self.opt.nobodyseg:
+        armlabel_map *= (1 - new_arm1_mask)
+        armlabel_map *= (1 - new_arm2_mask)
+        armlabel_map = armlabel_map * (1 - arm1_full) + arm1_full * 11
+        armlabel_map = armlabel_map * (1 - arm2_full) + arm2_full * 13
+        armlabel_map*=(1-fake_cl_dis)
+
         dis_label=encode(armlabel_map,armlabel_map.shape)
 
         fake_c, warped, warped_mask,warped_grid= self.Unet(clothes, fake_cl_dis, pre_clothes_mask,grid, cloth_rep)
@@ -392,11 +393,11 @@ class Pix2PixHDModel(BaseModel):
         skin_color = self.ger_average_color((arm1_mask + arm2_mask - arm2_mask * arm1_mask),
                                             (arm1_mask + arm2_mask - arm2_mask * arm1_mask) * real_image)
         occlude = (1 - bigger_arm1_occ * (arm2_mask + arm1_mask+clothes_mask)) * (1 - bigger_arm2_occ * (arm2_mask + arm1_mask+clothes_mask))
-        if self.opt.nobodyseg:
+        #if self.opt.nobodyseg:
             #pants_mask = torch.FloatTensor((label.cpu().numpy() == 8).astype(np.float)).cuda()
-            img_hole_hand = img_fore * (1 - clothes_mask) * (1 - fake_cl_dis) #* (1 - pants_mask)
-        else:
-            img_hole_hand = img_fore * (1 - clothes_mask) * occlude * (1 - fake_cl_dis)
+        #    img_hole_hand = img_fore * (1 - clothes_mask) * (1 - fake_cl_dis) #* (1 - pants_mask)
+        #else:
+        img_hole_hand = img_fore * (1 - clothes_mask) * occlude * (1 - fake_cl_dis)
 
         # G_in = torch.cat([img_hole_hand, dis_label, fake_c, skin_color, self.gen_noise(shape)], 1)
 
