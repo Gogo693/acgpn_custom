@@ -117,10 +117,16 @@ def add_neck(ac_label, dense):
     seg_head = torch.FloatTensor((ac_label.cpu().numpy() == 1).astype(np.int)) \
                + torch.FloatTensor((ac_label.cpu().numpy() == 12).astype(np.int))
 
-    dense_head = dense.numpy()
-    dense_head = np.copy(dense_head[:,:,2])
-    dense_head = torch.FloatTensor((ac_label.cpu().numpy() == 23).astype(np.int)) \
-                 + torch.FloatTensor((ac_label.cpu().numpy() == 24).astype(np.int))
+    dense_head = dense.cpu().numpy() * 255
+
+    dense_head = np.copy(dense_head[:,2,:,:])
+    dense_head = np.expand_dims(dense_head, axis = 0)
+    #print(np.amax(dense_head))
+
+    dense_head = torch.FloatTensor((dense_head == 23).astype(np.int)) \
+                 + torch.FloatTensor((dense_head == 24).astype(np.int))
+
+    #print(torch.max(dense_head))
 
     neck = dense_head - (seg_head * dense_head)
     new_label = new_label * (1 - neck) + neck * 14
@@ -327,7 +333,7 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         
         ### display output images
         if step % 1000 == 0:
-            print(input_label.shape)
+            l = torch.cat([label,label,label],1).cuda()
             a = generate_label_color(generate_label_plain(input_label)).float().cuda()
             b = real_image.float().cuda()
             c = fake_image.float().cuda()
@@ -336,7 +342,7 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
             f=refined
             z = torch.cat([all_clothes_label, all_clothes_label, all_clothes_label],1).cuda()
             #z = generate_label_color(generate_label_plain(all_clothes_label)).float().cuda()
-            combine = torch.cat([a[0],b[0],c[0],d[0],e[0], z[0]], 2).squeeze()
+            combine = torch.cat([l[0], a[0],b[0],c[0],d[0],e[0], z[0]], 2).squeeze()
             #combine = torch.cat([a[0], b[0], c[0], d[0], e[0], f[0]], 2).squeeze()
             cv_img=(combine.permute(1,2,0).detach().cpu().numpy()+1)/2
             writer.add_image('combine', (combine.data + 1) / 2.0, step)

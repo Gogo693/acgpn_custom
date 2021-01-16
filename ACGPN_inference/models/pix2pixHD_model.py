@@ -330,6 +330,8 @@ class Pix2PixHDModel(BaseModel):
         if self.opt.denseplus or self.opt.densestack:
             G1_in = torch.cat([pre_clothes_mask, clothes, all_clothes_label, dense, pose, self.gen_noise(shape)], dim=1)
 
+        if self.opt.noopenpose:
+            G1_in = torch.cat([pre_clothes_mask, clothes, all_clothes_label, dense, self.gen_noise(shape)], dim=1)
 
         arm_label = self.G1.refine(G1_in)
 
@@ -346,6 +348,10 @@ class Pix2PixHDModel(BaseModel):
             G2_in = torch.cat([pre_clothes_mask, cloth_rep, dis_label,pose,self.gen_noise(shape)], 1)
         else:
             G2_in = torch.cat([pre_clothes_mask, clothes, dis_label,pose,self.gen_noise(shape)], 1)
+
+        if self.opt.noopenpose:
+            G2_in = torch.cat([pre_clothes_mask, cloth_rep, masked_label, dense, self.gen_noise(shape)], 1)
+
 
         fake_cl = self.G2.refine(G2_in)
         fake_cl = self.sigmoid(fake_cl)

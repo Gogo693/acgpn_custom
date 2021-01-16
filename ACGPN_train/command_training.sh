@@ -3,3 +3,6 @@ nohup python train.py --dataroot ../../ACGPN_landmarks/ACGPN_train/data/ --gpu_i
 nohup python train.py --dataroot ../../ACGPN_landmarks/ACGPN_train/data/ --gpu_ids 3 --name dense --debug &
 nohup python train.py --dataroot ../../ACGPN_landmarks/ACGPN_train/data/ --gpu_ids 1 --niter 10 --niter_decay 10 --name densestack --densestack &
 nohup python train.py --dataroot ../../ACGPN_landmarks/ACGPN_train/data/ --load_pretrain ../ACGPN_inference/checkpoints/paper/ --gpu_ids 2 --niter 10 --niter_decay 10 --name denseplus_transfer --transfer --denseplus > nohup_denseplus_transfer.out &
+
+nohup python train.py --dataroot ../../ACGPN_landmarks/ACGPN_train/data/  --gpu_ids 2 --niter 10 --niter_decay 10 --denseplus --nobodyseg --landmarks --noopenpose --neck --name neck&
+nohup python train.py --dataroot ../../ACGPN_landmarks/ACGPN_train/data/  --gpu_ids 3 --niter 10 --niter_decay 10 --denseplus --nobodyseg --landmarks --neck --name neck_with_pose & > nohup_neck_with_pose.out
