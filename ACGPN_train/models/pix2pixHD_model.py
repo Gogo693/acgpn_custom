@@ -130,7 +130,7 @@ class Pix2PixHDModel(BaseModel):
         if self.opt.densestack:
             dense_dim = 6
 
-        if self.opt.clothlmg2# or self.opt.denseplus:
+        if self.opt.clothlmg2: # or self.opt.denseplus:
             cloth_lm_dim = 6
 
         pose_dim = 18
