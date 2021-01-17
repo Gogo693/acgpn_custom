@@ -15,6 +15,7 @@ import cv2
 writer = SummaryWriter('runs/G1G2')
 SIZE=320
 NC=14
+CUDA_LAUNCH_BLOCKING=1
 
 def save_img(opt, name, tensor_array):
     step = 0
@@ -165,6 +166,33 @@ def add_misscloth(ac_label, vt_label):
 
     return label
 
+def add_neck(ac_label, dense):
+    new_label = ac_label
+    seg_head = torch.FloatTensor((ac_label.cpu().numpy() == 1).astype(np.int)) \
+               + torch.FloatTensor((ac_label.cpu().numpy() == 12).astype(np.int))
+
+    print(torch.max(seg_head))
+
+    dense_head = dense.cpu().numpy() * 255
+    print(dense_head.shape)
+    dense_head = np.copy(dense_head[:, 2, :, :])
+    print(dense_head.shape)
+    dense_head = np.expand_dims(dense_head, axis = 0)
+    #print(np.amax(dense_head))
+
+    dense_head = torch.FloatTensor((dense_head == 23).astype(np.int)) \
+                 + torch.FloatTensor((dense_head == 24).astype(np.int))
+
+    print(torch.min(dense_head))
+    print(torch.max(new_label))
+    neck = dense_head - (seg_head * dense_head)
+    new_label = new_label * (1 - neck) + neck * 14
+
+    print(torch.min(new_label))
+    print(new_label.shape)
+
+    return new_label
+
 def remove_bodyseg(seg):
     label = seg
     body = torch.FloatTensor((seg.cpu().numpy() == 4).astype(np.int))
@@ -245,6 +273,7 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
                        + torch.FloatTensor((data['label'].cpu().numpy() == 7).astype(np.int))
         #if opt.pants:
         label = add_misscloth(data['label'], data['vt_label'])
+        #label = data['label']
         #else:
         #    label = data['label']
         mask_fore = torch.FloatTensor((label.cpu().numpy() > 0).astype(np.int))
@@ -263,6 +292,10 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
 
         if opt.nobodyseg:
             all_clothes_label = remove_bodyseg(all_clothes_label)
+
+        if opt.neck:
+            label = add_neck(label, data['dense'])
+            NC = 15
 
         ############## Forward Pass ######################
         losses, fake_image, real_image, input_label,L1_loss,style_loss,clothes_mask,CE_loss,rgb,alpha, \
