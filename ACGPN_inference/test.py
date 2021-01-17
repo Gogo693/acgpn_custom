@@ -293,9 +293,9 @@ for epoch in range(start_epoch, opt.niter + opt.niter_decay + 1):
         if opt.nobodyseg:
             all_clothes_label = remove_bodyseg(all_clothes_label)
 
-        if opt.neck:
-            label = add_neck(label, data['dense'])
-            NC = 15
+        #if opt.neck:
+            #label = add_neck(label, data['dense'])
+            #NC = 15
 
         ############## Forward Pass ######################
         losses, fake_image, real_image, input_label,L1_loss,style_loss,clothes_mask,CE_loss,rgb,alpha, \
